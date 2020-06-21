@@ -169,7 +169,7 @@ fn get_error_point(
         // endより大きいか見る
         if new_pos > end {
           // end_posを更新して終了 見かけ上、'\n'分だけ文字が増えているので補正
-          end_pos = (line, end - pos - 1);
+          end_pos = (line, end - pos);
           break;
         } else {
           // 行を1つ増やして、posも更新する
