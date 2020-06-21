@@ -1,0 +1,267 @@
+"use super::lexer;"
+"use super::types;"
+
+
+grammar;
+
+extern {
+  enum "lexer::Token" {
+    Tok_EOF          => "(lexer::TokenKind::EOF            , _)",
+    Tok_GRAMMAR      => "(lexer::TokenKind::GRAMMAR        , _)",
+    Tok_EXTERN       => "(lexer::TokenKind::EXTERN         , _)",
+    Tok_ENUM         => "(lexer::TokenKind::ENUM           , _)",
+    Tok_PUB          => "(lexer::TokenKind::PUB            , _)",
+    Tok_VAR          => "(lexer::TokenKind::VAR         (_), _)",
+    Tok_CONSTRUCTOR  => "(lexer::TokenKind::CONSTRUCTOR (_), _)",
+    Tok_LCURLYBRACES => "(lexer::TokenKind::LCURLYBRACES   , _)",
+    Tok_RCURLYBRACES => "(lexer::TokenKind::RCURLYBRACES   , _)",
+    Tok_EQ           => "(lexer::TokenKind::EQ             , _)",
+    Tok_COMMA        => "(lexer::TokenKind::COMMA          , _)",
+    Tok_SEMICOLON    => "(lexer::TokenKind::SEMICOLON      , _)",
+    Tok_COLON        => "(lexer::TokenKind::COLON          , _)",
+    Tok_LBRACES      => "(lexer::TokenKind::LBRACES        , _)",
+    Tok_RBRACES      => "(lexer::TokenKind::RBRACES        , _)",
+    Tok_ARROW        => "(lexer::TokenKind::ARROW          , _)",
+    Tok_STR          => "(lexer::TokenKind::STR         (_), _)",
+  }
+}
+
+pub main: "types::Term" = {
+  <head: head> <_gr: gr> <setting: setting> <body: body> <_v: Tok_EOF> => {
+    "let mut v = head;
+    v.reverse();
+    (v, setting, body)"
+  },
+};
+
+head: "types::Head" = {
+  <tok: Tok_STR> <tail: head_tail> => {
+    "let mut tail_v = tail;
+    let (stok, rng) = tok;
+    let s = lexer::get_string(stok).unwrap();
+    tail_v.push((rng, s));
+    tail_v"
+  },
+  => {"Vec::new()"},
+};
+
+head_tail: "types::Head" = {
+  <head: Tok_STR> <tail: head> => {
+    "let mut tail_v = tail;
+    let (stok, rng) = head;
+    let s = lexer::get_string(stok).unwrap();
+    tail_v.push((rng, s));
+    tail_v"
+  },
+  => {"Vec::new()"},
+};
+
+gr: "()" = {
+  <_v1: Tok_GRAMMAR> <_v2: Tok_SEMICOLON> => {"()"},
+};
+
+
+setting: "types::Setting" = {
+  <_v1: Tok_EXTERN> <_v2: Tok_LCURLYBRACES> <types: types> <_v3: Tok_RCURLYBRACES> => {
+    "types"
+  },
+};
+
+
+types: "types::Setting" = {
+  <_v1: Tok_ENUM> <nametok: Tok_STR> <_v2: Tok_LCURLYBRACES> <settokens_rev: settokens>
+    <_v3: Tok_RCURLYBRACES> => {
+    "let (stok, _) = nametok;
+    let s = lexer::get_string(stok).unwrap();
+    let mut settokens = settokens_rev;
+    settokens.reverse();
+    (s, settokens)"
+  },
+};
+
+
+settokens: "Vec<(types::Range, String, types::TypeStr)>" = {
+  <settoken: settoken> <settokens: settokens_sub> => {
+    "let mut v = settokens;
+    v.push(settoken);
+    v"
+  },
+  => {"Vec::new()"},
+};
+
+
+settokens_sub: "Vec<(types::Range, String, types::TypeStr)>" = {
+  <_v: Tok_COMMA> <tail: settokens_sub_sub> => {"tail"},
+  => {"Vec::new()"},
+};
+
+
+settokens_sub_sub: "Vec<(types::Range, String, types::TypeStr)>" = {
+  <settoken: settoken> <settokens: settokens_sub> => {
+    "let mut v = settokens;
+    v.push(settoken);
+    v"
+  },
+  => {"Vec::new()"},
+};
+
+
+
+settoken: "(types::Range, String, types::TypeStr)" = {
+  <name: Tok_CONSTRUCTOR> <_v: Tok_ARROW> <typestr: Tok_STR> => {
+    "let (v1tok, rng1) = name;
+    let v1 = lexer::get_string(v1tok).unwrap();
+    let (v2tok, rng2) = typestr;
+    let v2 = lexer::get_string(v2tok).unwrap();
+    (types::Range::unite(rng1, rng2), v1, v2)"
+  },
+};
+
+
+body: "Vec<types::Bnf>" = {
+  <bnflst: bnflst> => {
+    "let mut v = bnflst;
+    v.reverse();
+    v"
+  },
+};
+
+
+bnflst: "Vec<types::Bnf>" = {
+  <bnf: bnf> <bnflst: bnflst_sub> => {
+    "let mut v = bnflst;
+    v.push(bnf);
+    v"
+  },
+  => {"Vec::new()"},
+};
+
+
+bnflst_sub: "Vec<types::Bnf>" = {
+  <_v: Tok_SEMICOLON> <tail: bnflst_sub_sub> => {"tail"},
+  => {"Vec::new()"},
+};
+
+
+bnflst_sub_sub: "Vec<types::Bnf>" = {
+  <bnf: bnf> <bnflst: bnflst_sub> => {
+    "let mut v = bnflst;
+    v.push(bnf);
+    v"
+  },
+  => {"Vec::new()"},
+};
+
+
+bnf: "types::Bnf" = {
+  <_v1: Tok_PUB> <fnname: Tok_VAR> <_v2: Tok_COLON> <typestr: Tok_STR>
+    <_v3: Tok_EQ> <_v4: Tok_LCURLYBRACES> <bnf_code_lst: bnf_code_lst> <v5: Tok_RCURLYBRACES> => {
+      "let (nametok, rng1) = fnname;
+      let name = lexer::get_string(nametok).unwrap();
+      let (stok, _) = typestr;
+      let s = lexer::get_string(stok).unwrap();
+      let (_, rng2) = v5;
+      let rng = types::Range::unite(rng1, rng2);
+      types::Bnf::Pub(rng, name, s, bnf_code_lst)"
+    },
+    <fnname: Tok_VAR> <_v2: Tok_COLON> <typestr: Tok_STR>
+      <_v3: Tok_EQ> <_v4: Tok_LCURLYBRACES> <bnf_code_lst_rev: bnf_code_lst> <v5: Tok_RCURLYBRACES> => {
+        "let (nametok, rng1) = fnname;
+        let name = lexer::get_string(nametok).unwrap();
+        let (stok, _) = typestr;
+        let s = lexer::get_string(stok).unwrap();
+        let (_, rng2) = v5;
+        let rng = types::Range::unite(rng1, rng2);
+        let mut bnf_code_lst = bnf_code_lst_rev;
+        bnf_code_lst.reverse();
+        types::Bnf::NonPub(rng, name, s, bnf_code_lst)"
+      },
+};
+
+
+bnf_code_lst: "Vec<types::Code>" = {
+  <bnf_code: bnf_code> <bnf_code_lst: bnf_code_lst_sub> => {
+    "let mut v = bnf_code_lst;
+    v.push(bnf_code);
+    v"
+  },
+  => {"Vec::new()"},
+};
+
+
+bnf_code_lst_sub: "Vec<types::Code>" = {
+  <_v: Tok_COMMA> <tail: bnf_code_lst_sub_sub> => {"tail"},
+  => {"Vec::new()"},
+};
+
+
+bnf_code_lst_sub_sub: "Vec<types::Code>" = {
+  <bnf_code: bnf_code> <bnf_code_lst: bnf_code_lst_sub> => {
+    "let mut v = bnf_code_lst;
+    v.push(bnf_code);
+    v"
+  },
+  => {"Vec::new()"},
+};
+
+bnf_code: "types::Code" = {
+  <fn_or_token: fn_or_token> <fn_or_tokens: fn_or_token_lst> <_v1: Tok_ARROW> <_v2: Tok_LCURLYBRACES>
+    <code: Tok_STR> <_v3: Tok_RCURLYBRACES> => {
+      "let (codetok, _) = code;
+      let codestr = lexer::get_string(codetok).unwrap();
+      let mut v = fn_or_tokens;
+      v.push(fn_or_token);
+      v.reverse();
+      (v, codestr)"
+  },
+  <_v1: Tok_ARROW> <_v2: Tok_LCURLYBRACES>
+    <code: Tok_STR> <_v3: Tok_RCURLYBRACES> => {
+      "let (codetok, _) = code;
+      let codestr = lexer::get_string(codetok).unwrap();
+      let mut v = Vec::new();
+      v.reverse();
+      (v, codestr)"
+  },
+};
+
+fn_or_token_lst: "Vec<(String, types::FnOrToken)>" = {
+  <f: fn_or_token> <fs: fn_or_token_lst_sub> => {
+    "let mut v = fs;
+    v.push(f);
+    v"
+  },
+  => {"Vec::new()"},
+};
+
+fn_or_token_lst_sub: "Vec<(String, types::FnOrToken)>" = {
+  <f: fn_or_token> <fs: fn_or_token_lst> => {
+    "let mut v = fs;
+    v.push(f);
+    v"
+  },
+  => {"Vec::new()"},
+}; 
+
+
+
+fn_or_token: "(String, types::FnOrToken)" = {
+  <_v1: Tok_LBRACES> <name: Tok_VAR> <_v2: Tok_COLON> <tail:fn_or_token_sub> => {
+    "let (nametok, _) = name;
+    let namestr = lexer::get_string(nametok).unwrap();
+    (namestr, tail)"
+  }
+};
+
+
+fn_or_token_sub: "types::FnOrToken" = {
+  <fnname: Tok_VAR> <_v3: Tok_RBRACES> => {
+    "let (fnnametok, _) = fnname;
+    let fnnamestr = lexer::get_string(fnnametok).unwrap();
+    types::FnOrToken::Function(fnnamestr)"
+  },
+  <tokname: Tok_CONSTRUCTOR> <_v3: Tok_RBRACES> => {
+    "let (toknametok, _) = tokname;
+    let toknamestr = lexer::get_string(toknametok).unwrap();
+    types::FnOrToken::Token(toknamestr)"
+  },
+};
