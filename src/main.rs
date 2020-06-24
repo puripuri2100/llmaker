@@ -8,11 +8,11 @@ pub mod error;
 pub mod frontend;
 pub mod types;
 
-fn print_line () {
+fn print_line() {
   println!(" --- --- ---");
 }
 
-fn print_msg (s: &str) {
+fn print_msg(s: &str) {
   println!("  {}", s);
 }
 

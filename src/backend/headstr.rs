@@ -6,16 +6,11 @@ const HEADERMSG: &str = "
 //
 ";
 
-const USELIBRARY: &str = "use std::iter::Peekable;";
-
 pub fn head_to_str(headvec: types::Head, setting: types::Setting) -> String {
   let headstr = vecstr_to_str(headvec);
   let (main_type_str, _) = setting;
   let parse_error_type_str = make_parse_erro_type_str(main_type_str);
-  format!(
-    "{}\n{}\n{}\n\n{}",
-    HEADERMSG, USELIBRARY, headstr, parse_error_type_str
-  )
+  format!("{}\n{}\n\n{}", HEADERMSG, headstr, parse_error_type_str)
 }
 
 fn vecstr_to_str(v: Vec<(types::Range, String)>) -> String {

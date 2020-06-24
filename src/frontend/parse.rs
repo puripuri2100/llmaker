@@ -4,7 +4,6 @@
 
 use super::lexer;
 use super::types;
-use std::iter::Peekable;
 
 #[derive(Debug, Clone)]
 pub enum ParseError {
@@ -17,72 +16,80 @@ pub enum ParseError {
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
 pub fn parse(tokens: Vec<lexer::Token>) -> Result<types::Term, ParseError> {
-  let mut tokens = tokens.into_iter().peekable();
-  let ret = _parse_fn_main(&mut tokens)?;
-  match tokens.next() {
-    Some(tok) => Err(ParseError::RedundantExpression(tok)),
-    None => Ok(ret),
+  let (ret, pos) = _parse_fn_main(&tokens, 0)?;
+  if pos == tokens.len() {
+    Ok(ret)
+  } else if pos > tokens.len() {
+    Err(ParseError::Eof)
+  } else {
+    Err(ParseError::RedundantExpression(tokens[pos].clone()))
   }
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_main<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<types::Term, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_main(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(types::Term, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::STR(_), _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::STR(_), _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let head = _parse_fn_head(tokens)?;
-      let _gr = _parse_fn_gr(tokens)?;
-      let setting = _parse_fn_setting(tokens)?;
-      let body = _parse_fn_body(tokens)?;
-      let _v = _parse_token_Tok_EOF(tokens)?;
+    CodeType::Code1 => {
+      let (head, pos) = _parse_fn_head(tokens, pos)?;
+      let (_gr, pos) = _parse_fn_gr(tokens, pos)?;
+      let (setting, pos) = _parse_fn_setting(tokens, pos)?;
+      let (body, pos) = _parse_fn_body(tokens, pos)?;
+      let (_v, pos) = _parse_token_Tok_EOF(tokens, pos)?;
+
+      _token_pos = pos;
       let mut v = head;
       v.reverse();
       (v, setting, body)
     }
-    _ => return Err(ParseError::UnexpectedToken(tokens.next().unwrap())),
+    _ => {
+      return Err(ParseError::UnexpectedToken(
+        tokens.iter().next().unwrap().clone(),
+      ))
+    }
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_head<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<types::Head, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_head(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(types::Head, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::STR(_), _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::STR(_), _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let tok = _parse_token_Tok_STR(tokens)?;
-      let tail = _parse_fn_head_tail(tokens)?;
+    CodeType::Code1 => {
+      let (tok, pos) = _parse_token_Tok_STR(tokens, pos)?;
+      let (tail, pos) = _parse_fn_head_tail(tokens, pos)?;
+
+      _token_pos = pos;
       let mut tail_v = tail;
       let (stok, rng) = tok;
       let s = lexer::get_string(stok).unwrap();
@@ -91,32 +98,33 @@ where
     }
     _ => Vec::new(),
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_head_tail<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<types::Head, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_head_tail(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(types::Head, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::STR(_), _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::STR(_), _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let head = _parse_token_Tok_STR(tokens)?;
-      let tail = _parse_fn_head(tokens)?;
+    CodeType::Code1 => {
+      let (head, pos) = _parse_token_Tok_STR(tokens, pos)?;
+      let (tail, pos) = _parse_fn_head(tokens, pos)?;
+
+      _token_pos = pos;
       let mut tail_v = tail;
       let (stok, rng) = head;
       let s = lexer::get_string(stok).unwrap();
@@ -125,405 +133,422 @@ where
     }
     _ => Vec::new(),
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_gr<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<(), ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_gr(tokens: &Vec<lexer::Token>, pos: usize) -> Result<((), usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::GRAMMAR, _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::GRAMMAR, _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let _v1 = _parse_token_Tok_GRAMMAR(tokens)?;
-      let _v2 = _parse_token_Tok_SEMICOLON(tokens)?;
+    CodeType::Code1 => {
+      let (_v1, pos) = _parse_token_Tok_GRAMMAR(tokens, pos)?;
+      let (_v2, pos) = _parse_token_Tok_SEMICOLON(tokens, pos)?;
+
+      _token_pos = pos;
       ()
     }
-    _ => return Err(ParseError::UnexpectedToken(tokens.next().unwrap())),
+    _ => {
+      return Err(ParseError::UnexpectedToken(
+        tokens.iter().next().unwrap().clone(),
+      ))
+    }
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_setting<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<types::Setting, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_setting(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(types::Setting, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::EXTERN, _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::EXTERN, _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let _v1 = _parse_token_Tok_EXTERN(tokens)?;
-      let _v2 = _parse_token_Tok_LCURLYBRACES(tokens)?;
-      let types = _parse_fn_types(tokens)?;
-      let _v3 = _parse_token_Tok_RCURLYBRACES(tokens)?;
+    CodeType::Code1 => {
+      let (_v1, pos) = _parse_token_Tok_EXTERN(tokens, pos)?;
+      let (_v2, pos) = _parse_token_Tok_LCURLYBRACES(tokens, pos)?;
+      let (types, pos) = _parse_fn_types(tokens, pos)?;
+      let (_v3, pos) = _parse_token_Tok_RCURLYBRACES(tokens, pos)?;
+
+      _token_pos = pos;
       types
     }
-    _ => return Err(ParseError::UnexpectedToken(tokens.next().unwrap())),
+    _ => {
+      return Err(ParseError::UnexpectedToken(
+        tokens.iter().next().unwrap().clone(),
+      ))
+    }
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_types<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<types::Setting, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_types(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(types::Setting, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::ENUM, _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::ENUM, _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let _v1 = _parse_token_Tok_ENUM(tokens)?;
-      let nametok = _parse_token_Tok_STR(tokens)?;
-      let _v2 = _parse_token_Tok_LCURLYBRACES(tokens)?;
-      let settokens_rev = _parse_fn_settokens(tokens)?;
-      let _v3 = _parse_token_Tok_RCURLYBRACES(tokens)?;
+    CodeType::Code1 => {
+      let (_v1, pos) = _parse_token_Tok_ENUM(tokens, pos)?;
+      let (nametok, pos) = _parse_token_Tok_STR(tokens, pos)?;
+      let (_v2, pos) = _parse_token_Tok_LCURLYBRACES(tokens, pos)?;
+      let (settokens_rev, pos) = _parse_fn_settokens(tokens, pos)?;
+      let (_v3, pos) = _parse_token_Tok_RCURLYBRACES(tokens, pos)?;
+
+      _token_pos = pos;
       let (stok, _) = nametok;
       let s = lexer::get_string(stok).unwrap();
       let mut settokens = settokens_rev;
       settokens.reverse();
       (s, settokens)
     }
-    _ => return Err(ParseError::UnexpectedToken(tokens.next().unwrap())),
+    _ => {
+      return Err(ParseError::UnexpectedToken(
+        tokens.iter().next().unwrap().clone(),
+      ))
+    }
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_settokens<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<Vec<(types::Range, String, types::TypeStr)>, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_settokens(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(Vec<(types::Range, String, types::TypeStr)>, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::CONSTRUCTOR(_), _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::CONSTRUCTOR(_), _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let settoken = _parse_fn_settoken(tokens)?;
-      let settokens = _parse_fn_settokens_sub(tokens)?;
+    CodeType::Code1 => {
+      let (settoken, pos) = _parse_fn_settoken(tokens, pos)?;
+      let (settokens, pos) = _parse_fn_settokens_sub(tokens, pos)?;
+
+      _token_pos = pos;
       let mut v = settokens;
       v.push(settoken);
       v
     }
     _ => Vec::new(),
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_settokens_sub<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<Vec<(types::Range, String, types::TypeStr)>, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_settokens_sub(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(Vec<(types::Range, String, types::TypeStr)>, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::COMMA, _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::COMMA, _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let _v = _parse_token_Tok_COMMA(tokens)?;
-      let tail = _parse_fn_settokens_sub_sub(tokens)?;
+    CodeType::Code1 => {
+      let (_v, pos) = _parse_token_Tok_COMMA(tokens, pos)?;
+      let (tail, pos) = _parse_fn_settokens_sub_sub(tokens, pos)?;
+
+      _token_pos = pos;
       tail
     }
     _ => Vec::new(),
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_settokens_sub_sub<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<Vec<(types::Range, String, types::TypeStr)>, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_settokens_sub_sub(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(Vec<(types::Range, String, types::TypeStr)>, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::CONSTRUCTOR(_), _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::CONSTRUCTOR(_), _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let settoken = _parse_fn_settoken(tokens)?;
-      let settokens = _parse_fn_settokens_sub(tokens)?;
+    CodeType::Code1 => {
+      let (settoken, pos) = _parse_fn_settoken(tokens, pos)?;
+      let (settokens, pos) = _parse_fn_settokens_sub(tokens, pos)?;
+
+      _token_pos = pos;
       let mut v = settokens;
       v.push(settoken);
       v
     }
     _ => Vec::new(),
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_settoken<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<(types::Range, String, types::TypeStr), ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_settoken(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<((types::Range, String, types::TypeStr), usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::CONSTRUCTOR(_), _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::CONSTRUCTOR(_), _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let name = _parse_token_Tok_CONSTRUCTOR(tokens)?;
-      let _v = _parse_token_Tok_ARROW(tokens)?;
-      let typestr = _parse_token_Tok_STR(tokens)?;
+    CodeType::Code1 => {
+      let (name, pos) = _parse_token_Tok_CONSTRUCTOR(tokens, pos)?;
+      let (_v, pos) = _parse_token_Tok_ARROW(tokens, pos)?;
+      let (typestr, pos) = _parse_token_Tok_STR(tokens, pos)?;
+
+      _token_pos = pos;
       let (v1tok, rng1) = name;
       let v1 = lexer::get_string(v1tok).unwrap();
       let (v2tok, rng2) = typestr;
       let v2 = lexer::get_string(v2tok).unwrap();
       (types::Range::unite(rng1, rng2), v1, v2)
     }
-    _ => return Err(ParseError::UnexpectedToken(tokens.next().unwrap())),
+    _ => {
+      return Err(ParseError::UnexpectedToken(
+        tokens.iter().next().unwrap().clone(),
+      ))
+    }
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_body<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<Vec<types::Bnf>, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_body(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(Vec<types::Bnf>, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::PUB, _) | (lexer::TokenKind::VAR(_), _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::PUB, _) | (lexer::TokenKind::VAR(_), _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let bnflst = _parse_fn_bnflst(tokens)?;
+    CodeType::Code1 => {
+      let (bnflst, pos) = _parse_fn_bnflst(tokens, pos)?;
+
+      _token_pos = pos;
       let mut v = bnflst;
       v.reverse();
       v
     }
-    _ => return Err(ParseError::UnexpectedToken(tokens.next().unwrap())),
+    _ => {
+      return Err(ParseError::UnexpectedToken(
+        tokens.iter().next().unwrap().clone(),
+      ))
+    }
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_bnflst<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<Vec<types::Bnf>, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_bnflst(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(Vec<types::Bnf>, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::PUB, _) | (lexer::TokenKind::VAR(_), _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::PUB, _) | (lexer::TokenKind::VAR(_), _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let bnf = _parse_fn_bnf(tokens)?;
-      let bnflst = _parse_fn_bnflst_sub(tokens)?;
+    CodeType::Code1 => {
+      let (bnf, pos) = _parse_fn_bnf(tokens, pos)?;
+      let (bnflst, pos) = _parse_fn_bnflst_sub(tokens, pos)?;
+
+      _token_pos = pos;
       let mut v = bnflst;
       v.push(bnf);
       v
     }
     _ => Vec::new(),
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_bnflst_sub<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<Vec<types::Bnf>, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_bnflst_sub(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(Vec<types::Bnf>, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::SEMICOLON, _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::SEMICOLON, _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let _v = _parse_token_Tok_SEMICOLON(tokens)?;
-      let tail = _parse_fn_bnflst_sub_sub(tokens)?;
+    CodeType::Code1 => {
+      let (_v, pos) = _parse_token_Tok_SEMICOLON(tokens, pos)?;
+      let (tail, pos) = _parse_fn_bnflst_sub_sub(tokens, pos)?;
+
+      _token_pos = pos;
       tail
     }
     _ => Vec::new(),
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_bnflst_sub_sub<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<Vec<types::Bnf>, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_bnflst_sub_sub(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(Vec<types::Bnf>, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::PUB, _) | (lexer::TokenKind::VAR(_), _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::PUB, _) | (lexer::TokenKind::VAR(_), _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let bnf = _parse_fn_bnf(tokens)?;
-      let bnflst = _parse_fn_bnflst_sub(tokens)?;
+    CodeType::Code1 => {
+      let (bnf, pos) = _parse_fn_bnf(tokens, pos)?;
+      let (bnflst, pos) = _parse_fn_bnflst_sub(tokens, pos)?;
+
+      _token_pos = pos;
       let mut v = bnflst;
       v.push(bnf);
       v
     }
     _ => Vec::new(),
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_bnf<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<types::Bnf, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_bnf(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(types::Bnf, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
-    Tok2,
+    Code1,
+    Code2,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::PUB, _) => Ok(CodeType::Tok1),
-      (lexer::TokenKind::VAR(_), _) => Ok(CodeType::Tok2),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::PUB, _) => Ok(CodeType::Code1),
+    (lexer::TokenKind::VAR(_), _) => Ok(CodeType::Code2),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let _v1 = _parse_token_Tok_PUB(tokens)?;
-      let fnname = _parse_token_Tok_VAR(tokens)?;
-      let _v2 = _parse_token_Tok_COLON(tokens)?;
-      let typestr = _parse_token_Tok_STR(tokens)?;
-      let _v3 = _parse_token_Tok_EQ(tokens)?;
-      let _v4 = _parse_token_Tok_LCURLYBRACES(tokens)?;
-      let bnf_code_lst = _parse_fn_bnf_code_lst(tokens)?;
-      let v5 = _parse_token_Tok_RCURLYBRACES(tokens)?;
+    CodeType::Code1 => {
+      let (_v1, pos) = _parse_token_Tok_PUB(tokens, pos)?;
+      let (fnname, pos) = _parse_token_Tok_VAR(tokens, pos)?;
+      let (_v2, pos) = _parse_token_Tok_COLON(tokens, pos)?;
+      let (typestr, pos) = _parse_token_Tok_STR(tokens, pos)?;
+      let (_v3, pos) = _parse_token_Tok_EQ(tokens, pos)?;
+      let (_v4, pos) = _parse_token_Tok_LCURLYBRACES(tokens, pos)?;
+      let (bnf_code_lst, pos) = _parse_fn_bnf_code_lst(tokens, pos)?;
+      let (v5, pos) = _parse_token_Tok_RCURLYBRACES(tokens, pos)?;
+
+      _token_pos = pos;
       let (nametok, rng1) = fnname;
       let name = lexer::get_string(nametok).unwrap();
       let (stok, _) = typestr;
@@ -532,14 +557,16 @@ where
       let rng = types::Range::unite(rng1, rng2);
       types::Bnf::Pub(rng, name, s, bnf_code_lst)
     }
-    CodeType::Tok2 => {
-      let fnname = _parse_token_Tok_VAR(tokens)?;
-      let _v2 = _parse_token_Tok_COLON(tokens)?;
-      let typestr = _parse_token_Tok_STR(tokens)?;
-      let _v3 = _parse_token_Tok_EQ(tokens)?;
-      let _v4 = _parse_token_Tok_LCURLYBRACES(tokens)?;
-      let bnf_code_lst_rev = _parse_fn_bnf_code_lst(tokens)?;
-      let v5 = _parse_token_Tok_RCURLYBRACES(tokens)?;
+    CodeType::Code2 => {
+      let (fnname, pos) = _parse_token_Tok_VAR(tokens, pos)?;
+      let (_v2, pos) = _parse_token_Tok_COLON(tokens, pos)?;
+      let (typestr, pos) = _parse_token_Tok_STR(tokens, pos)?;
+      let (_v3, pos) = _parse_token_Tok_EQ(tokens, pos)?;
+      let (_v4, pos) = _parse_token_Tok_LCURLYBRACES(tokens, pos)?;
+      let (bnf_code_lst_rev, pos) = _parse_fn_bnf_code_lst(tokens, pos)?;
+      let (v5, pos) = _parse_token_Tok_RCURLYBRACES(tokens, pos)?;
+
+      _token_pos = pos;
       let (nametok, rng1) = fnname;
       let name = lexer::get_string(nametok).unwrap();
       let (stok, _) = typestr;
@@ -550,140 +577,142 @@ where
       bnf_code_lst.reverse();
       types::Bnf::NonPub(rng, name, s, bnf_code_lst)
     }
-    _ => return Err(ParseError::UnexpectedToken(tokens.next().unwrap())),
+    _ => {
+      return Err(ParseError::UnexpectedToken(
+        tokens.iter().next().unwrap().clone(),
+      ))
+    }
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_bnf_code_lst<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<Vec<types::Code>, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_bnf_code_lst(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(Vec<types::Code>, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::ARROW, _) | (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::ARROW, _) | (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let bnf_code = _parse_fn_bnf_code(tokens)?;
-      let bnf_code_lst = _parse_fn_bnf_code_lst_sub(tokens)?;
+    CodeType::Code1 => {
+      let (bnf_code, pos) = _parse_fn_bnf_code(tokens, pos)?;
+      let (bnf_code_lst, pos) = _parse_fn_bnf_code_lst_sub(tokens, pos)?;
+
+      _token_pos = pos;
       let mut v = bnf_code_lst;
       v.push(bnf_code);
       v
     }
     _ => Vec::new(),
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_bnf_code_lst_sub<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<Vec<types::Code>, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_bnf_code_lst_sub(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(Vec<types::Code>, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::COMMA, _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::COMMA, _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let _v = _parse_token_Tok_COMMA(tokens)?;
-      let tail = _parse_fn_bnf_code_lst_sub_sub(tokens)?;
+    CodeType::Code1 => {
+      let (_v, pos) = _parse_token_Tok_COMMA(tokens, pos)?;
+      let (tail, pos) = _parse_fn_bnf_code_lst_sub_sub(tokens, pos)?;
+
+      _token_pos = pos;
       tail
     }
     _ => Vec::new(),
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_bnf_code_lst_sub_sub<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<Vec<types::Code>, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_bnf_code_lst_sub_sub(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(Vec<types::Code>, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::ARROW, _) | (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::ARROW, _) | (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let bnf_code = _parse_fn_bnf_code(tokens)?;
-      let bnf_code_lst = _parse_fn_bnf_code_lst_sub(tokens)?;
+    CodeType::Code1 => {
+      let (bnf_code, pos) = _parse_fn_bnf_code(tokens, pos)?;
+      let (bnf_code_lst, pos) = _parse_fn_bnf_code_lst_sub(tokens, pos)?;
+
+      _token_pos = pos;
       let mut v = bnf_code_lst;
       v.push(bnf_code);
       v
     }
     _ => Vec::new(),
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_bnf_code<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<types::Code, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_bnf_code(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(types::Code, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
-    Tok2,
+    Code1,
+    Code2,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Tok1),
-      (lexer::TokenKind::ARROW, _) => Ok(CodeType::Tok2),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Code1),
+    (lexer::TokenKind::ARROW, _) => Ok(CodeType::Code2),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let fn_or_token = _parse_fn_fn_or_token(tokens)?;
-      let fn_or_tokens = _parse_fn_fn_or_token_lst(tokens)?;
-      let _v1 = _parse_token_Tok_ARROW(tokens)?;
-      let _v2 = _parse_token_Tok_LCURLYBRACES(tokens)?;
-      let code = _parse_token_Tok_STR(tokens)?;
-      let _v3 = _parse_token_Tok_RCURLYBRACES(tokens)?;
+    CodeType::Code1 => {
+      let (fn_or_token, pos) = _parse_fn_fn_or_token(tokens, pos)?;
+      let (fn_or_tokens, pos) = _parse_fn_fn_or_token_lst(tokens, pos)?;
+      let (_v1, pos) = _parse_token_Tok_ARROW(tokens, pos)?;
+      let (_v2, pos) = _parse_token_Tok_LCURLYBRACES(tokens, pos)?;
+      let (code, pos) = _parse_token_Tok_STR(tokens, pos)?;
+      let (_v3, pos) = _parse_token_Tok_RCURLYBRACES(tokens, pos)?;
+
+      _token_pos = pos;
       let (codetok, _) = code;
       let codestr = lexer::get_string(codetok).unwrap();
       let mut v = fn_or_tokens;
@@ -691,453 +720,415 @@ where
       v.reverse();
       (v, codestr)
     }
-    CodeType::Tok2 => {
-      let _v1 = _parse_token_Tok_ARROW(tokens)?;
-      let _v2 = _parse_token_Tok_LCURLYBRACES(tokens)?;
-      let code = _parse_token_Tok_STR(tokens)?;
-      let _v3 = _parse_token_Tok_RCURLYBRACES(tokens)?;
+    CodeType::Code2 => {
+      let (_v1, pos) = _parse_token_Tok_ARROW(tokens, pos)?;
+      let (_v2, pos) = _parse_token_Tok_LCURLYBRACES(tokens, pos)?;
+      let (code, pos) = _parse_token_Tok_STR(tokens, pos)?;
+      let (_v3, pos) = _parse_token_Tok_RCURLYBRACES(tokens, pos)?;
+
+      _token_pos = pos;
       let (codetok, _) = code;
       let codestr = lexer::get_string(codetok).unwrap();
       let mut v = Vec::new();
       v.reverse();
       (v, codestr)
     }
-    _ => return Err(ParseError::UnexpectedToken(tokens.next().unwrap())),
+    _ => {
+      return Err(ParseError::UnexpectedToken(
+        tokens.iter().next().unwrap().clone(),
+      ))
+    }
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_fn_or_token_lst<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<Vec<(String, types::FnOrToken)>, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_fn_or_token_lst(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(Vec<(String, types::FnOrToken)>, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let f = _parse_fn_fn_or_token(tokens)?;
-      let fs = _parse_fn_fn_or_token_lst_sub(tokens)?;
+    CodeType::Code1 => {
+      let (f, pos) = _parse_fn_fn_or_token(tokens, pos)?;
+      let (fs, pos) = _parse_fn_fn_or_token_lst_sub(tokens, pos)?;
+
+      _token_pos = pos;
       let mut v = fs;
       v.push(f);
       v
     }
     _ => Vec::new(),
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_fn_or_token_lst_sub<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<Vec<(String, types::FnOrToken)>, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_fn_or_token_lst_sub(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(Vec<(String, types::FnOrToken)>, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let f = _parse_fn_fn_or_token(tokens)?;
-      let fs = _parse_fn_fn_or_token_lst(tokens)?;
+    CodeType::Code1 => {
+      let (f, pos) = _parse_fn_fn_or_token(tokens, pos)?;
+      let (fs, pos) = _parse_fn_fn_or_token_lst(tokens, pos)?;
+
+      _token_pos = pos;
       let mut v = fs;
       v.push(f);
       v
     }
     _ => Vec::new(),
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_fn_or_token<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<(String, types::FnOrToken), ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_fn_or_token(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<((String, types::FnOrToken), usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
+    Code1,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Tok1),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Code1),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let _v1 = _parse_token_Tok_LBRACES(tokens)?;
-      let name = _parse_token_Tok_VAR(tokens)?;
-      let _v2 = _parse_token_Tok_COLON(tokens)?;
-      let tail = _parse_fn_fn_or_token_sub(tokens)?;
+    CodeType::Code1 => {
+      let (_v1, pos) = _parse_token_Tok_LBRACES(tokens, pos)?;
+      let (name, pos) = _parse_token_Tok_VAR(tokens, pos)?;
+      let (_v2, pos) = _parse_token_Tok_COLON(tokens, pos)?;
+      let (tail, pos) = _parse_fn_fn_or_token_sub(tokens, pos)?;
+
+      _token_pos = pos;
       let (nametok, _) = name;
       let namestr = lexer::get_string(nametok).unwrap();
       (namestr, tail)
     }
-    _ => return Err(ParseError::UnexpectedToken(tokens.next().unwrap())),
+    _ => {
+      return Err(ParseError::UnexpectedToken(
+        tokens.iter().next().unwrap().clone(),
+      ))
+    }
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_fn_or_token_sub<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<types::FnOrToken, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
+fn _parse_fn_fn_or_token_sub(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(types::FnOrToken, usize), ParseError> {
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   enum CodeType {
-    Tok1,
-    Tok2,
+    Code1,
+    Code2,
     Other,
   }
-  let code_type = tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {
-      (lexer::TokenKind::VAR(_), _) => Ok(CodeType::Tok1),
-      (lexer::TokenKind::CONSTRUCTOR(_), _) => Ok(CodeType::Tok2),
+  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::VAR(_), _) => Ok(CodeType::Code1),
+    (lexer::TokenKind::CONSTRUCTOR(_), _) => Ok(CodeType::Code2),
 
-      _ => Ok(CodeType::Other),
-    });
+    _ => Ok(CodeType::Other),
+  });
   let main = match code_type? {
-    CodeType::Tok1 => {
-      let fnname = _parse_token_Tok_VAR(tokens)?;
-      let _v3 = _parse_token_Tok_RBRACES(tokens)?;
+    CodeType::Code1 => {
+      let (fnname, pos) = _parse_token_Tok_VAR(tokens, pos)?;
+      let (_v3, pos) = _parse_token_Tok_RBRACES(tokens, pos)?;
+
+      _token_pos = pos;
       let (fnnametok, _) = fnname;
       let fnnamestr = lexer::get_string(fnnametok).unwrap();
       types::FnOrToken::Function(fnnamestr)
     }
-    CodeType::Tok2 => {
-      let tokname = _parse_token_Tok_CONSTRUCTOR(tokens)?;
-      let _v3 = _parse_token_Tok_RBRACES(tokens)?;
+    CodeType::Code2 => {
+      let (tokname, pos) = _parse_token_Tok_CONSTRUCTOR(tokens, pos)?;
+      let (_v3, pos) = _parse_token_Tok_RBRACES(tokens, pos)?;
+
+      _token_pos = pos;
       let (toknametok, _) = tokname;
       let toknamestr = lexer::get_string(toknametok).unwrap();
       types::FnOrToken::Token(toknamestr)
     }
-    _ => return Err(ParseError::UnexpectedToken(tokens.next().unwrap())),
+    _ => {
+      return Err(ParseError::UnexpectedToken(
+        tokens.iter().next().unwrap().clone(),
+      ))
+    }
   };
-  Ok(main)
+  Ok((main, _token_pos))
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_Tok_EOF<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<lexer::Token, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {
-      (lexer::TokenKind::EOF, _) => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    })
+fn _parse_token_Tok_EOF(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(lexer::Token, usize), ParseError> {
+  let token1 = tokens.get(pos);
+  token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::EOF, _) => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  })
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_Tok_GRAMMAR<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<lexer::Token, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {
-      (lexer::TokenKind::GRAMMAR, _) => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    })
+fn _parse_token_Tok_GRAMMAR(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(lexer::Token, usize), ParseError> {
+  let token1 = tokens.get(pos);
+  token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::GRAMMAR, _) => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  })
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_Tok_EXTERN<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<lexer::Token, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {
-      (lexer::TokenKind::EXTERN, _) => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    })
+fn _parse_token_Tok_EXTERN(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(lexer::Token, usize), ParseError> {
+  let token1 = tokens.get(pos);
+  token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::EXTERN, _) => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  })
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_Tok_ENUM<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<lexer::Token, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {
-      (lexer::TokenKind::ENUM, _) => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    })
+fn _parse_token_Tok_ENUM(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(lexer::Token, usize), ParseError> {
+  let token1 = tokens.get(pos);
+  token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::ENUM, _) => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  })
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_Tok_PUB<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<lexer::Token, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {
-      (lexer::TokenKind::PUB, _) => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    })
+fn _parse_token_Tok_PUB(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(lexer::Token, usize), ParseError> {
+  let token1 = tokens.get(pos);
+  token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::PUB, _) => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  })
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_Tok_VAR<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<lexer::Token, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {
-      (lexer::TokenKind::VAR(_), _) => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    })
+fn _parse_token_Tok_VAR(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(lexer::Token, usize), ParseError> {
+  let token1 = tokens.get(pos);
+  token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::VAR(_), _) => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  })
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_Tok_CONSTRUCTOR<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<lexer::Token, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {
-      (lexer::TokenKind::CONSTRUCTOR(_), _) => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    })
+fn _parse_token_Tok_CONSTRUCTOR(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(lexer::Token, usize), ParseError> {
+  let token1 = tokens.get(pos);
+  token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::CONSTRUCTOR(_), _) => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  })
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_Tok_LCURLYBRACES<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<lexer::Token, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {
-      (lexer::TokenKind::LCURLYBRACES, _) => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    })
+fn _parse_token_Tok_LCURLYBRACES(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(lexer::Token, usize), ParseError> {
+  let token1 = tokens.get(pos);
+  token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::LCURLYBRACES, _) => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  })
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_Tok_RCURLYBRACES<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<lexer::Token, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {
-      (lexer::TokenKind::RCURLYBRACES, _) => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    })
+fn _parse_token_Tok_RCURLYBRACES(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(lexer::Token, usize), ParseError> {
+  let token1 = tokens.get(pos);
+  token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::RCURLYBRACES, _) => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  })
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_Tok_EQ<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<lexer::Token, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {
-      (lexer::TokenKind::EQ, _) => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    })
+fn _parse_token_Tok_EQ(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(lexer::Token, usize), ParseError> {
+  let token1 = tokens.get(pos);
+  token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::EQ, _) => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  })
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_Tok_COMMA<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<lexer::Token, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {
-      (lexer::TokenKind::COMMA, _) => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    })
+fn _parse_token_Tok_COMMA(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(lexer::Token, usize), ParseError> {
+  let token1 = tokens.get(pos);
+  token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::COMMA, _) => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  })
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_Tok_SEMICOLON<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<lexer::Token, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {
-      (lexer::TokenKind::SEMICOLON, _) => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    })
+fn _parse_token_Tok_SEMICOLON(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(lexer::Token, usize), ParseError> {
+  let token1 = tokens.get(pos);
+  token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::SEMICOLON, _) => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  })
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_Tok_COLON<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<lexer::Token, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {
-      (lexer::TokenKind::COLON, _) => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    })
+fn _parse_token_Tok_COLON(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(lexer::Token, usize), ParseError> {
+  let token1 = tokens.get(pos);
+  token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::COLON, _) => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  })
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_Tok_LBRACES<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<lexer::Token, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {
-      (lexer::TokenKind::LBRACES, _) => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    })
+fn _parse_token_Tok_LBRACES(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(lexer::Token, usize), ParseError> {
+  let token1 = tokens.get(pos);
+  token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::LBRACES, _) => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  })
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_Tok_RBRACES<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<lexer::Token, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {
-      (lexer::TokenKind::RBRACES, _) => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    })
+fn _parse_token_Tok_RBRACES(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(lexer::Token, usize), ParseError> {
+  let token1 = tokens.get(pos);
+  token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::RBRACES, _) => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  })
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_Tok_ARROW<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<lexer::Token, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {
-      (lexer::TokenKind::ARROW, _) => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    })
+fn _parse_token_Tok_ARROW(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(lexer::Token, usize), ParseError> {
+  let token1 = tokens.get(pos);
+  token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::ARROW, _) => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  })
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_Tok_STR<Tokens>(tokens: &mut Peekable<Tokens>) -> Result<lexer::Token, ParseError>
-where
-  Tokens: Iterator<Item = lexer::Token>,
-{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {
-      (lexer::TokenKind::STR(_), _) => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    })
+fn _parse_token_Tok_STR(
+  tokens: &Vec<lexer::Token>,
+  pos: usize,
+) -> Result<(lexer::Token, usize), ParseError> {
+  let token1 = tokens.get(pos);
+  token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
+    (lexer::TokenKind::STR(_), _) => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  })
 }

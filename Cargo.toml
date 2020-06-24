@@ -3,6 +3,8 @@ name = "llmaker"
 version = "0.1.0"
 authors = ["puripuri2100 <puripuri2100@gmail.com>"]
 edition = "2018"
+license = "MIT"
+description = "Make LL(1) token parser code for Rust."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

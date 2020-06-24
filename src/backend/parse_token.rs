@@ -15,19 +15,18 @@ fn token_and_str_to_str(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_token_{}<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<{}, ParseError>
-where
-  Tokens: Iterator<Item = {}>,
+fn _parse_token_{}(
+  tokens: &Vec<{}>,
+  pos: usize,
+) -> Result<({}, usize), ParseError>
 {{
-  tokens
-    .next()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok.clone() {{
-      {} => Ok(tok),
-      _ => Err(ParseError::UnexpectedToken(tok)),
-    }})
+  let token1 = tokens.get(pos);
+  token1
+  .ok_or(ParseError::Eof)
+  .and_then(|tok| match tok {{
+    {} => Ok((tok.clone(), pos + 1)),
+    _ => Err(ParseError::UnexpectedToken(tok.clone())),
+  }})
 }}
 ",
     token_name, main_type_str, main_type_str, type_str

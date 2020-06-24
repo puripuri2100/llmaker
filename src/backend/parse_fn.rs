@@ -40,16 +40,17 @@ fn make_main_parse_fn_str(
     )),
   }?;
   Ok(format!(
-    "
-#[allow(non_camel_case_types)]
+    "#[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
 pub fn parse(tokens: Vec<{}>) -> Result<{}, ParseError> {{
-  let mut tokens = tokens.into_iter().peekable();
-  let ret = _parse_fn_{}(&mut tokens)?;
-  match tokens.next() {{
-    Some(tok) => Err(ParseError::RedundantExpression(tok)),
-    None => Ok(ret),
+  let (ret, pos) = _parse_fn_{}(&tokens, 0)?;
+  if pos == tokens.len() {{
+    Ok(ret)
+  }} else if pos > tokens.len() {{
+    Err(ParseError::Eof)
+  }} else {{
+    Err(ParseError::RedundantExpression(tokens[pos].clone()))
   }}
 }}
 ",
@@ -103,7 +104,7 @@ fn make_parse_fn(
   let (main_code_str, err_or_null_code) = match main_code_str_result {
     Ok(code) => (
       code,
-      "return Err(ParseError::UnexpectedToken(tokens.next().unwrap()))".to_string(),
+      "return Err(ParseError::UnexpectedToken(tokens.iter().next().unwrap().clone()))".to_string(),
     ),
     Err((main_code, null_code)) => (main_code, null_code),
   };
@@ -112,32 +113,32 @@ fn make_parse_fn(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_{}<Tokens>(
-  tokens: &mut Peekable<Tokens>,
-) -> Result<{}, ParseError>
-where
-  Tokens: Iterator<Item = {}>,
+fn _parse_fn_{}(
+  tokens: &Vec<{}>,
+  pos: usize,
+) -> Result<({}, usize), ParseError>
 {{
+  let mut _token_pos = pos;
+  let token1 = tokens.get(pos);
   {}
   let code_type =
-  tokens
-    .peek()
-    .ok_or(ParseError::Eof)
-    .and_then(|tok| match tok {{
-  {}
-    _ => {{Ok(CodeType::Other)}}
-    }});
+    token1
+      .ok_or(ParseError::Eof)
+      .and_then(|tok| match tok {{
+    {}
+      _ => {{Ok(CodeType::Other)}}
+      }});
   let main =
   match code_type? {{
     {}
     _ => {{ {} }}
   }};
-  Ok(main)
+  Ok((main, _token_pos))
 }}
 ",
     name,
-    type_str,
     main_type_str,
+    type_str,
     code_type,
     nexttoken_to_code_type,
     main_code_str,
@@ -152,7 +153,7 @@ fn make_code_type_str(code_lst: &Vec<types::Code>) -> String {
     if v.len() == 0 {
     } else {
       toknum = toknum + 1;
-      toknum_str.push_str(&format!("Tok{},", toknum))
+      toknum_str.push_str(&format!("Code{},", toknum))
     }
   }
   format! {
@@ -175,7 +176,7 @@ fn make_nexttoken_to_code_type(
     } else {
       toknum = toknum + 1;
       toknum_str.push_str(&format!(
-        "{} => {{ Ok(CodeType::Tok{}) }}\n",
+        "{} => {{ Ok(CodeType::Code{}) }}\n",
         next_tokens_lst_str, toknum
       ))
     }
@@ -315,7 +316,11 @@ fn make_main_code_str(code_lst: &Vec<types::Code>) -> Result<String, (String, St
       toknum = toknum + 1;
       let let_code = make_let_code(fn_or_token_lst);
       code_str.push_str(&format!(
-        "CodeType::Tok{} => {{ {}{} }}",
+        "CodeType::Code{} => {{
+          {}
+          _token_pos = pos;
+          {}
+        }}",
         toknum, let_code, code
       ))
     }
@@ -330,12 +335,14 @@ fn make_let_code(fn_or_token_lst: &Vec<(String, types::FnOrToken)>) -> String {
   let mut main_s = String::new();
   for (name, fn_or_token) in fn_or_token_lst.iter() {
     let s = match fn_or_token {
-      types::FnOrToken::Function(fn_name) => {
-        format!("let {} = _parse_fn_{}(tokens)?;\n", name, fn_name)
-      }
-      types::FnOrToken::Token(tok_name) => {
-        format!("let {} = _parse_token_{}(tokens)?;\n", name, tok_name)
-      }
+      types::FnOrToken::Function(fn_name) => format!(
+        "let ({}, pos) = _parse_fn_{}(tokens, pos)?;\n",
+        name, fn_name
+      ),
+      types::FnOrToken::Token(tok_name) => format!(
+        "let ({}, pos) = _parse_token_{}(tokens, pos)?;\n",
+        name, tok_name
+      ),
     };
     main_s.push_str(&s)
   }

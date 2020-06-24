@@ -162,7 +162,7 @@ fn get_error_point(
   let mut is_start_pos_update = false;
   let split_input_bytes = input_bytes.split(|b| b == &b'\n');
   for b_vec in split_input_bytes {
-    let new_pos = pos + b_vec.len() + 1;// splitするときに\nが削除されるので
+    let new_pos = pos + b_vec.len() + 1; // splitするときに\nが削除されるので
     if new_pos > start {
       if is_start_pos_update {
         // 既に更新されているのでstart_posに関してはスルー
