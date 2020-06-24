@@ -168,32 +168,77 @@ fn make_nexttoken_to_code_type(
   fn_name_map: HashMap<&String, (&types::Range, &String, &Vec<types::Code>)>,
   token_map: HashMap<&String, &String>,
 ) -> Result<String, error::Error> {
-  let mut toknum_str = String::new();
-  let mut toknum = 0;
-  for (v, _) in code_lst.iter() {
-    let next_tokens_lst_str = make_next_tokens_lst_str(v, fn_name_map.clone(), token_map.clone())?;
+  let mut tok_vec = Vec::new();
+  for i in 0..code_lst.len() {
+    let (v, _) = &code_lst[i];
+    let next_tokens_lst = make_next_tokens_lst(&v, fn_name_map.clone(), i)?;
     if v.len() == 0 {
     } else {
-      toknum = toknum + 1;
-      toknum_str.push_str(&format!(
-        "{} => {{ Ok(CodeType::Code{}) }}\n",
-        next_tokens_lst_str, toknum
-      ))
+      tok_vec.push(next_tokens_lst)
+    }
+  }
+  let mut tok_vec_old = tok_vec.concat();
+  tok_vec_old.sort();
+  let mut tok_vec = Vec::new();
+  let mut i_vec_vec_mut: Vec<Vec<usize>> = Vec::new();
+  for i in 0..tok_vec_old.len() {
+    let (fn_or_tok, v, i_vec) = &tok_vec_old[i];
+    let next_opt = &tok_vec_old.get(i + 1);
+    match next_opt {
+      None => {
+        // 最後なのでリストを回収・結合してまとめてpush
+        i_vec_vec_mut.push(i_vec.clone());
+        let i_vec_new = i_vec_vec_mut.concat();
+        tok_vec.push((fn_or_tok, v, i_vec_new));
+        i_vec_vec_mut = Vec::new();
+      }
+      Some((fn_or_tok_next, _, _)) => {
+        if fn_or_tok_next == fn_or_tok {
+          // 次のトークンは同じものなのでリストを結合して更新
+          i_vec_vec_mut.push(i_vec.clone())
+        } else {
+          // 次のトークンは違うものなのでリストを回収・結合してまとめてpush
+        i_vec_vec_mut.push(i_vec.clone());
+        let i_vec_new = i_vec_vec_mut.concat();
+          tok_vec.push((fn_or_tok, v, i_vec_new));
+          i_vec_vec_mut = Vec::new();
+        }
+      }
+    }
+  }
+  let mut toknum_str = String::new();
+  for (fn_or_token, _, i_vec) in tok_vec.iter() {
+    match fn_or_token {
+      types::FnOrToken::Token(tokname) => {
+        let s = match token_map.get(tokname) {
+          Some(s) => Ok(s.as_str()),
+          None => Err(error::Error::ConfigError(
+            error::ConfigError::NotFoundTokenTypeStr(tokname.clone()),
+          )),
+        }?;
+        let string = format!("{} => Ok(CodeType::Code{}),\n", s, i_vec[0] + 1);
+        toknum_str.push_str(&string)
+      }
+      types::FnOrToken::Function(_) => (),
     }
   }
   Ok(toknum_str)
 }
 
-fn make_next_tokens_lst_str(
+fn make_next_tokens_lst(
   tokens_lst: &Vec<(String, types::FnOrToken)>,
   fn_name_map: HashMap<&String, (&types::Range, &String, &Vec<types::Code>)>,
-  token_map: HashMap<&String, &String>,
-) -> Result<String, error::Error> {
+  i: usize,
+) -> Result<Vec<(types::FnOrToken, Vec<Vec<usize>>, Vec<usize>)>, error::Error> {
   match tokens_lst.iter().next() {
-    None => Ok(String::new()),
+    None => Ok(Vec::new()),
     Some((_, fn_or_token)) => {
       let lst = serch_next_token(vec![fn_or_token.clone()], fn_name_map)?;
-      Ok(make_or_code_str(lst, token_map)?)
+      let mut v = Vec::new();
+      for ft in lst.iter() {
+        v.push((ft.clone(), Vec::new(), vec![i]))
+      }
+      Ok(v)
     }
   }
 }
@@ -262,45 +307,6 @@ fn serch(
       Ok(get_head(code_lst))
     }
   }
-}
-
-fn make_or_code_str(
-  lst: Vec<types::FnOrToken>,
-  token_map: HashMap<&String, &String>,
-) -> Result<String, error::Error> {
-  let mut main_s = String::new();
-  let last_str_opt = lst.iter().last();
-  let last_str = match last_str_opt {
-    None => Ok(""),
-    Some(fn_or_token) => match fn_or_token {
-      types::FnOrToken::Function(_) => Ok(""),
-      types::FnOrToken::Token(tokname) => match token_map.get(tokname) {
-        Some(s) => Ok(s.as_str()),
-        None => Err(error::Error::ConfigError(
-          error::ConfigError::NotFoundTokenTypeStr(tokname.clone()),
-        )),
-      },
-    },
-  }?;
-  let vec_len = lst.len();
-  for i in 0..(vec_len - 1) {
-    let fn_or_token = &lst[i];
-    match fn_or_token {
-      types::FnOrToken::Function(_) => (),
-      types::FnOrToken::Token(tokname) => {
-        // エラー処理を後で実装
-        let s = match token_map.get(tokname) {
-          Some(s) => Ok(s.as_str()),
-          None => Err(error::Error::ConfigError(
-            error::ConfigError::NotFoundTokenTypeStr(tokname.clone()),
-          )),
-        }?;
-        main_s.push_str(&format!("{} | ", s))
-      }
-    }
-  }
-  main_s.push_str(last_str);
-  Ok(main_s)
 }
 
 // nullが無ければコードを全部結合した文字列を
