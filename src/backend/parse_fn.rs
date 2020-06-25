@@ -322,9 +322,9 @@ fn make_main_code_str(code_lst: &Vec<types::Code>) -> Result<String, (String, St
       let let_code = make_let_code(fn_or_token_lst);
       code_str.push_str(&format!(
         "CodeType::Code{} => {{
-          {}
-          _token_pos = pos;
-          {}
+{}
+      _token_pos = pos;
+{}
         }}",
         toknum, let_code, code
       ));
@@ -342,11 +342,11 @@ fn make_let_code(fn_or_token_lst: &Vec<(String, types::FnOrToken)>) -> String {
   for (name, fn_or_token) in fn_or_token_lst.iter() {
     let s = match fn_or_token {
       types::FnOrToken::Function(fn_name) => format!(
-        "let ({}, pos) = _parse_fn_{}(tokens, pos)?;\n",
+        "      let ({}, pos) = _parse_fn_{}(tokens, pos)?;\n",
         name, fn_name
       ),
       types::FnOrToken::Token(tok_name) => format!(
-        "let ({}, pos) = _parse_token_{}(tokens, pos)?;\n",
+        "      let ({}, pos) = _parse_token_{}(tokens, pos)?;\n",
         name, tok_name
       ),
     };
