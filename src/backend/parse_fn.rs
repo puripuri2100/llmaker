@@ -20,8 +20,12 @@ pub fn make_parse_fn_fn_str(
     fn_name_map.insert(name, (range, typestr, code_vec));
   }
   let main_parse_fn_str = make_main_parse_fn_str(main_type_str.clone(), bnfs.clone())?;
-  let parse_fn_str =
-    make_parse_fn_str(main_type_str.clone(), &fn_name_map, &token_map, bnfs.clone())?;
+  let parse_fn_str = make_parse_fn_str(
+    main_type_str.clone(),
+    &fn_name_map,
+    &token_map,
+    bnfs.clone(),
+  )?;
   Ok(format!("{}\n{}\n", main_parse_fn_str, parse_fn_str))
 }
 
@@ -67,18 +71,12 @@ fn make_parse_fn_str(
   let mut main_s = String::new();
   for v in bnfs {
     let s = match v {
-      types::Bnf::Pub(_, name, _, _) => make_parse_fn(
-        main_type_str.clone(),
-        name,
-        fn_name_map,
-        token_map,
-      )?,
-      types::Bnf::NonPub(_, name, _, _) => make_parse_fn(
-        main_type_str.clone(),
-        name,
-        fn_name_map,
-        token_map,
-      )?,
+      types::Bnf::Pub(_, name, _, _) => {
+        make_parse_fn(main_type_str.clone(), name, fn_name_map, token_map)?
+      }
+      types::Bnf::NonPub(_, name, _, _) => {
+        make_parse_fn(main_type_str.clone(), name, fn_name_map, token_map)?
+      }
     };
     main_s.push_str(&s)
   }
@@ -98,8 +96,7 @@ fn make_parse_fn(
     )),
   }?;
   let code_type = make_code_type_str(code_lst);
-  let nexttoken_to_code_type =
-    make_nexttoken_to_code_type(code_lst, fn_name_map, token_map)?;
+  let nexttoken_to_code_type = make_nexttoken_to_code_type(code_lst, fn_name_map, token_map)?;
   let main_code_str_result = make_main_code_str(code_lst);
   let (main_code_str, err_or_null_code) = match main_code_str_result {
     Ok(code) => (
@@ -198,8 +195,8 @@ fn make_nexttoken_to_code_type(
           i_vec_vec_mut.push(i_vec.clone())
         } else {
           // 次のトークンは違うものなのでリストを回収・結合してまとめてpush
-        i_vec_vec_mut.push(i_vec.clone());
-        let i_vec_new = i_vec_vec_mut.concat();
+          i_vec_vec_mut.push(i_vec.clone());
+          let i_vec_new = i_vec_vec_mut.concat();
           tok_vec.push((fn_or_tok, v, i_vec_new));
           i_vec_vec_mut = Vec::new();
         }
@@ -233,7 +230,7 @@ fn make_next_tokens_lst(
   match tokens_lst.iter().next() {
     None => Ok(Vec::new()),
     Some((_, fn_or_token)) => {
-      let lst = serch_next_token(vec![fn_or_token.clone()], fn_name_map)?;
+      let lst = serch_next_token(vec![fn_or_token.clone()], fn_name_map, vec![i])?;
       let mut v = Vec::new();
       for ft in lst.iter() {
         v.push((ft.clone(), Vec::new(), vec![i]))
@@ -246,6 +243,7 @@ fn make_next_tokens_lst(
 fn serch_next_token(
   fn_or_token_lst: Vec<types::FnOrToken>,
   fn_name_map: &HashMap<&String, (&types::Range, &String, &Vec<types::Code>)>,
+  i_vec: Vec<usize>,
 ) -> Result<Vec<types::FnOrToken>, error::Error> {
   // fn_or_token_lstにserchをmapしてリストを作る
   // それらをconcatして重複を取り除く
@@ -270,14 +268,16 @@ fn serch_next_token(
   let mut new_fn_or_token_lst = new_fn_or_token_lst_lst.concat();
   // 元のリストと結合
   new_fn_or_token_lst.append(&mut old_fn_or_token_lst);
-  // sortして重複削除
+  // sortして揃える
   new_fn_or_token_lst.sort();
+  // 次の中身が同じならi_vecをstack
+  // 次の中身が違うならstackの中身を取り出す
   new_fn_or_token_lst.dedup();
   // 長さを見る
   if fn_or_token_lst.len() == new_fn_or_token_lst.len() {
     Ok(new_fn_or_token_lst)
   } else {
-    serch_next_token(new_fn_or_token_lst, fn_name_map)
+    serch_next_token(new_fn_or_token_lst, fn_name_map, i_vec)
   }
 }
 
