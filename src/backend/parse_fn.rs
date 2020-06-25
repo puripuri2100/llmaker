@@ -149,8 +149,8 @@ fn make_code_type_str(code_lst: &Vec<types::Code>) -> String {
   for (v, _) in code_lst.iter() {
     if v.len() == 0 {
     } else {
+      toknum_str.push_str(&format!("Code{},", toknum));
       toknum = toknum + 1;
-      toknum_str.push_str(&format!("Code{},", toknum))
     }
   }
   format! {
@@ -213,7 +213,7 @@ fn make_nexttoken_to_code_type(
             error::ConfigError::NotFoundTokenTypeStr(tokname.clone()),
           )),
         }?;
-        let string = format!("{} => Ok(CodeType::Code{}),\n", s, i_vec[0] + 1);
+        let string = format!("{} => Ok(CodeType::Code{}),\n", s, i_vec[0]);
         toknum_str.push_str(&string)
       }
       types::FnOrToken::Function(_) => (),
@@ -319,7 +319,6 @@ fn make_main_code_str(code_lst: &Vec<types::Code>) -> Result<String, (String, St
     if fn_or_token_lst.len() == 0 {
       null_code_opt = Some(code.to_string())
     } else {
-      toknum = toknum + 1;
       let let_code = make_let_code(fn_or_token_lst);
       code_str.push_str(&format!(
         "CodeType::Code{} => {{
@@ -328,7 +327,8 @@ fn make_main_code_str(code_lst: &Vec<types::Code>) -> Result<String, (String, St
           {}
         }}",
         toknum, let_code, code
-      ))
+      ));
+      toknum = toknum + 1;
     }
   }
   match null_code_opt {
