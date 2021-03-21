@@ -6,6 +6,9 @@ edition = "2018"
 license = "MIT"
 description = "Make LL(1) token parser code for Rust."
 readme = "README.md"
+exclude = ["tests/*", ".github/*"]
+keywords = ["parser", "grammar", "parser-generator"]
+categories = ["Parsing tools"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
