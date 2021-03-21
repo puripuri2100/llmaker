@@ -70,4 +70,4 @@ If `demo/demo.rs` is created, then the setup has been finished correctly.
 
 This software released under [the MIT license](https://github.com/puripuri2100/llmaker/blob/master/LICENSE).
 
-Copyright (c) 2020 Naoki Kaneko (a.k.a. "puripuri2100")
+Copyright (c) 2020-2021 Naoki Kaneko (a.k.a. "puripuri2100")

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 pub fn make_parse_fn_fn_str(
   setting: types::Setting,
-  bnfs: Vec<types::Bnf>,
+  bnfs: &Vec<types::Bnf>,
 ) -> Result<String, error::Error> {
   let (main_type_str, token_tbl) = setting;
   let mut token_map = HashMap::new();
@@ -24,7 +24,7 @@ pub fn make_parse_fn_fn_str(
     main_type_str.clone(),
     &fn_name_map,
     &token_map,
-    bnfs.clone(),
+    bnfs,
   )?;
   Ok(format!("{}\n{}\n", main_parse_fn_str, parse_fn_str))
 }
@@ -66,16 +66,16 @@ fn make_parse_fn_str(
   main_type_str: String,
   fn_name_map: &HashMap<&String, (&types::Range, &String, &Vec<types::Code>)>,
   token_map: &HashMap<&String, &String>,
-  bnfs: Vec<types::Bnf>,
+  bnfs: &Vec<types::Bnf>,
 ) -> Result<String, error::Error> {
   let mut main_s = String::new();
   for v in bnfs {
     let s = match v {
       types::Bnf::Pub(_, name, _, _) => {
-        make_parse_fn(main_type_str.clone(), name, fn_name_map, token_map)?
+        make_parse_fn(main_type_str.clone(), name.to_string(), fn_name_map, token_map)?
       }
       types::Bnf::NonPub(_, name, _, _) => {
-        make_parse_fn(main_type_str.clone(), name, fn_name_map, token_map)?
+        make_parse_fn(main_type_str.clone(), name.to_string(), fn_name_map, token_map)?
       }
     };
     main_s.push_str(&s)
@@ -177,34 +177,34 @@ fn make_nexttoken_to_code_type(
   let mut tok_vec_old = tok_vec.concat();
   tok_vec_old.sort();
   let mut tok_vec = Vec::new();
-  let mut i_vec_vec_mut: Vec<Vec<usize>> = Vec::new();
+  let mut stack: Vec<Vec<usize>> = Vec::new();
   for i in 0..tok_vec_old.len() {
     let (fn_or_tok, v, i_vec) = &tok_vec_old[i];
     let next_opt = &tok_vec_old.get(i + 1);
     match next_opt {
       None => {
         // 最後なのでリストを回収・結合してまとめてpush
-        i_vec_vec_mut.push(i_vec.clone());
-        let i_vec_new = i_vec_vec_mut.concat();
+        stack.push(i_vec.clone());
+        let i_vec_new = stack.concat();
         tok_vec.push((fn_or_tok, v, i_vec_new));
-        i_vec_vec_mut = Vec::new();
+        stack = Vec::new();
       }
       Some((fn_or_tok_next, _, _)) => {
         if fn_or_tok_next == fn_or_tok {
           // 次のトークンは同じものなのでリストを結合して更新
-          i_vec_vec_mut.push(i_vec.clone())
+          stack.push(i_vec.clone())
         } else {
           // 次のトークンは違うものなのでリストを回収・結合してまとめてpush
-          i_vec_vec_mut.push(i_vec.clone());
-          let i_vec_new = i_vec_vec_mut.concat();
+          stack.push(i_vec.clone());
+          let i_vec_new = stack.concat();
           tok_vec.push((fn_or_tok, v, i_vec_new));
-          i_vec_vec_mut = Vec::new();
+          stack = Vec::new();
         }
       }
     }
   }
   let mut toknum_str = String::new();
-  for (fn_or_token, _, i_vec) in tok_vec.iter() {
+  for (fn_or_token, tree, i_vec) in tok_vec.iter() {
     match fn_or_token {
       types::FnOrToken::Token(tokname) => {
         let s = match token_map.get(tokname) {
@@ -214,6 +214,7 @@ fn make_nexttoken_to_code_type(
           )),
         }?;
         let string = format!("{} => Ok(CodeType::Code{}),\n", s, i_vec[0]);
+        println!("{:?}: {:?}", fn_or_token, tree);
         toknum_str.push_str(&string)
       }
       types::FnOrToken::Function(_) => (),
@@ -230,10 +231,14 @@ fn make_next_tokens_lst(
   match tokens_lst.iter().next() {
     None => Ok(Vec::new()),
     Some((_, fn_or_token)) => {
-      let lst = serch_next_token(vec![fn_or_token.clone()], fn_name_map, vec![i])?;
+      let lst = serch_next_token(
+        &vec![(fn_or_token.clone(), vec![vec![i]])],
+        fn_name_map,
+        vec![vec![i]],
+      )?;
       let mut v = Vec::new();
-      for ft in lst.iter() {
-        v.push((ft.clone(), Vec::new(), vec![i]))
+      for (ft, tree) in lst.iter() {
+        v.push((ft.clone(), tree.clone(), vec![i]))
       }
       Ok(v)
     }
@@ -241,20 +246,21 @@ fn make_next_tokens_lst(
 }
 
 fn serch_next_token(
-  fn_or_token_lst: Vec<types::FnOrToken>,
+  fn_or_token_lst: &Vec<(types::FnOrToken, Vec<Vec<usize>>)>,
   fn_name_map: &HashMap<&String, (&types::Range, &String, &Vec<types::Code>)>,
-  i_vec: Vec<usize>,
-) -> Result<Vec<types::FnOrToken>, error::Error> {
+  i_vec: Vec<Vec<usize>>,
+) -> Result<Vec<(types::FnOrToken, Vec<Vec<usize>>)>, error::Error> {
   // fn_or_token_lstにserchをmapしてリストを作る
   // それらをconcatして重複を取り除く
   // 長さが元のfn_or_token_lstと変わらなかったらループに入っているので処理を終了し、
   // Tokenだけを残す処理をして、処理後のリストを返す
   // 長さが変化していたら処理が継続中なのでserch_next_tokenに値を入れて再帰化
-  let new_fn_or_token_lst_lst_res: Vec<Result<Vec<types::FnOrToken>, error::Error>> =
-    fn_or_token_lst
-      .iter()
-      .map(|fn_or_token| serch(fn_or_token, fn_name_map))
-      .collect();
+  let new_fn_or_token_lst_lst_res: Vec<
+    Result<Vec<(types::FnOrToken, Vec<Vec<usize>>)>, error::Error>,
+  > = fn_or_token_lst
+    .iter()
+    .map(|(fn_or_token, tree)| serch(fn_or_token, tree, fn_name_map))
+    .collect();
   let mut old_fn_or_token_lst = fn_or_token_lst.clone();
   let mut new_fn_or_token_lst_lst = Vec::new();
   // Errが無い限り突っ込んでいく
@@ -277,26 +283,30 @@ fn serch_next_token(
   if fn_or_token_lst.len() == new_fn_or_token_lst.len() {
     Ok(new_fn_or_token_lst)
   } else {
-    serch_next_token(new_fn_or_token_lst, fn_name_map, i_vec)
+    serch_next_token(&new_fn_or_token_lst, fn_name_map, i_vec)
   }
 }
 
 fn serch(
   fn_or_token: &types::FnOrToken,
+  tree: &Vec<Vec<usize>>,
   fn_name_map: &HashMap<&String, (&types::Range, &String, &Vec<types::Code>)>,
-) -> Result<Vec<types::FnOrToken>, error::Error> {
-  fn get_head(lst: &Vec<types::Code>) -> Vec<types::FnOrToken> {
+) -> Result<Vec<(types::FnOrToken, Vec<Vec<usize>>)>, error::Error> {
+  fn get_head(
+    lst: &Vec<types::Code>,
+    tree: &Vec<Vec<usize>>,
+  ) -> Vec<(types::FnOrToken, Vec<Vec<usize>>)> {
     let mut main_vec = Vec::new();
     for (new_fn_or_token_lst, _) in lst.iter() {
       match new_fn_or_token_lst.iter().next() {
         None => (),
-        Some((_, fn_or_token)) => main_vec.push(fn_or_token.clone()),
+        Some((_, fn_or_token)) => main_vec.push((fn_or_token.clone(), tree.to_vec())),
       }
     }
     main_vec
   };
   match fn_or_token {
-    types::FnOrToken::Token(_) => Ok(vec![fn_or_token.clone()]),
+    types::FnOrToken::Token(_) => Ok(vec![(fn_or_token.clone(), tree.to_vec())]),
     types::FnOrToken::Function(s) => {
       let code_lst = match fn_name_map.get(s) {
         Some((_, _, code_lst)) => Ok(code_lst),
@@ -304,14 +314,14 @@ fn serch(
           error::ConfigError::NotFoundFunctionName(s.clone()),
         )),
       }?;
-      Ok(get_head(code_lst))
+      Ok(get_head(code_lst, tree))
     }
   }
 }
 
 // nullが無ければコードを全部結合した文字列を
 // nullがあったらnull以外のコードを結合した文字列とnullの場合のコードを返す。
-fn make_main_code_str(code_lst: &Vec<types::Code>) -> Result<String, (String, String)> {
+fn make_main_code_str(code_lst: &[types::Code]) -> Result<String, (String, String)> {
   let mut null_code_opt = None;
   let mut code_str = String::new();
   let mut toknum = 0;
@@ -337,7 +347,7 @@ fn make_main_code_str(code_lst: &Vec<types::Code>) -> Result<String, (String, St
   }
 }
 
-fn make_let_code(fn_or_token_lst: &Vec<(String, types::FnOrToken)>) -> String {
+fn make_let_code(fn_or_token_lst: &[(String, types::FnOrToken)]) -> String {
   let mut main_s = String::new();
   for (name, fn_or_token) in fn_or_token_lst.iter() {
     let s = match fn_or_token {

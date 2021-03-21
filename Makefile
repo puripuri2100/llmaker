@@ -3,7 +3,6 @@
 build:
 	cargo fmt
 	cargo build
-	cp target/debug/llmaker .
 
 
 clean:
@@ -18,16 +17,5 @@ demo:
 
 test:
 	cargo test
-	./llmaker
-
-
-buildwin:
-	cargo fmt
-	cargo build
-
-
-testwin:
-	cargo test
-	target\debug\llmaker.exe -V
-	target\debug\llmaker.exe -h
-	target\debug\llmaker.exe test/test.mkr
+	cargo run -- test/test.mkr
+	cargo run -- test/parser.mkr
