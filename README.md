@@ -1,4 +1,4 @@
-![](https://github.com/puripuri2100/llmaker/workflows/build/badge.svg)
+![](https://github.com/puripuri2100/llmaker/actions/workflows/rust.yml/badge.svg)
 
 llmaker version 0.0.1
 
