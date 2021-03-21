@@ -4,6 +4,7 @@
 
 use super::lexer;
 use super::types;
+use std::cmp::Ordering;
 
 #[derive(Debug, Clone)]
 pub enum ParseError {
@@ -17,35 +18,31 @@ pub enum ParseError {
 #[allow(unused_parens)]
 pub fn parse(tokens: Vec<lexer::Token>) -> Result<types::Term, ParseError> {
   let (ret, pos) = _parse_fn_main(&tokens, 0)?;
-  if pos == tokens.len() {
-    Ok(ret)
-  } else if pos > tokens.len() {
-    Err(ParseError::Eof)
-  } else {
-    Err(ParseError::RedundantExpression(tokens[pos].clone()))
+  match pos.cmp(&tokens.len()) {
+    Ordering::Equal => Ok(ret),
+    Ordering::Greater => Err(ParseError::Eof), // pos > tokens.len()
+    Ordering::Less => Err(ParseError::RedundantExpression(tokens[pos].clone())),
   }
 }
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_main(
-  tokens: &Vec<lexer::Token>,
-  pos: usize,
-) -> Result<(types::Term, usize), ParseError> {
+#[allow(clippy::type_complexity)]
+fn _parse_fn_main(tokens: &[lexer::Token], pos: usize) -> Result<(types::Term, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::STR(_), _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::STR(_), _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (head, pos) = _parse_fn_head(tokens, pos)?;
       let (_gr, pos) = _parse_fn_gr(tokens, pos)?;
       let (setting, pos) = _parse_fn_setting(tokens, pos)?;
@@ -69,23 +66,21 @@ fn _parse_fn_main(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_head(
-  tokens: &Vec<lexer::Token>,
-  pos: usize,
-) -> Result<(types::Head, usize), ParseError> {
+#[allow(clippy::type_complexity)]
+fn _parse_fn_head(tokens: &[lexer::Token], pos: usize) -> Result<(types::Head, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::STR(_), _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::STR(_), _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (tok, pos) = _parse_token_Tok_STR(tokens, pos)?;
       let (tail, pos) = _parse_fn_head_tail(tokens, pos)?;
 
@@ -104,23 +99,24 @@ fn _parse_fn_head(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_head_tail(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(types::Head, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::STR(_), _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::STR(_), _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (head, pos) = _parse_token_Tok_STR(tokens, pos)?;
       let (tail, pos) = _parse_fn_head(tokens, pos)?;
 
@@ -139,25 +135,25 @@ fn _parse_fn_head_tail(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_gr(tokens: &Vec<lexer::Token>, pos: usize) -> Result<((), usize), ParseError> {
+#[allow(clippy::type_complexity)]
+fn _parse_fn_gr(tokens: &[lexer::Token], pos: usize) -> Result<((), usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::GRAMMAR, _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::GRAMMAR, _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (_v1, pos) = _parse_token_Tok_GRAMMAR(tokens, pos)?;
       let (_v2, pos) = _parse_token_Tok_SEMICOLON(tokens, pos)?;
 
       _token_pos = pos;
-      ()
     }
     _ => {
       return Err(ParseError::UnexpectedToken(
@@ -171,23 +167,24 @@ fn _parse_fn_gr(tokens: &Vec<lexer::Token>, pos: usize) -> Result<((), usize), P
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_setting(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(types::Setting, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::EXTERN, _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::EXTERN, _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (_v1, pos) = _parse_token_Tok_EXTERN(tokens, pos)?;
       let (_v2, pos) = _parse_token_Tok_LCURLYBRACES(tokens, pos)?;
       let (types, pos) = _parse_fn_types(tokens, pos)?;
@@ -208,23 +205,24 @@ fn _parse_fn_setting(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_types(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(types::Setting, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::ENUM, _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::ENUM, _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (_v1, pos) = _parse_token_Tok_ENUM(tokens, pos)?;
       let (nametok, pos) = _parse_token_Tok_STR(tokens, pos)?;
       let (_v2, pos) = _parse_token_Tok_LCURLYBRACES(tokens, pos)?;
@@ -250,23 +248,24 @@ fn _parse_fn_types(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_settokens(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(Vec<(types::Range, String, types::TypeStr)>, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::CONSTRUCTOR(_), _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::CONSTRUCTOR(_), _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (settoken, pos) = _parse_fn_settoken(tokens, pos)?;
       let (settokens, pos) = _parse_fn_settokens_sub(tokens, pos)?;
 
@@ -283,23 +282,24 @@ fn _parse_fn_settokens(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_settokens_sub(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(Vec<(types::Range, String, types::TypeStr)>, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::COMMA, _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::COMMA, _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (_v, pos) = _parse_token_Tok_COMMA(tokens, pos)?;
       let (tail, pos) = _parse_fn_settokens_sub_sub(tokens, pos)?;
 
@@ -314,23 +314,24 @@ fn _parse_fn_settokens_sub(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_settokens_sub_sub(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(Vec<(types::Range, String, types::TypeStr)>, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::CONSTRUCTOR(_), _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::CONSTRUCTOR(_), _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (settoken, pos) = _parse_fn_settoken(tokens, pos)?;
       let (settokens, pos) = _parse_fn_settokens_sub(tokens, pos)?;
 
@@ -347,23 +348,24 @@ fn _parse_fn_settokens_sub_sub(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_settoken(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<((types::Range, String, types::TypeStr), usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::CONSTRUCTOR(_), _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::CONSTRUCTOR(_), _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (name, pos) = _parse_token_Tok_CONSTRUCTOR(tokens, pos)?;
       let (_v, pos) = _parse_token_Tok_ARROW(tokens, pos)?;
       let (typestr, pos) = _parse_token_Tok_STR(tokens, pos)?;
@@ -387,24 +389,25 @@ fn _parse_fn_settoken(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_body(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(Vec<types::Bnf>, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::PUB, _) => Ok(CodeType::Code1),
-    (lexer::TokenKind::VAR(_), _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::PUB, _) => CodeType::Code0,
+    (lexer::TokenKind::VAR(_), _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (bnflst, pos) = _parse_fn_bnflst(tokens, pos)?;
 
       _token_pos = pos;
@@ -424,24 +427,25 @@ fn _parse_fn_body(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_bnflst(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(Vec<types::Bnf>, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::PUB, _) => Ok(CodeType::Code1),
-    (lexer::TokenKind::VAR(_), _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::PUB, _) => CodeType::Code0,
+    (lexer::TokenKind::VAR(_), _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (bnf, pos) = _parse_fn_bnf(tokens, pos)?;
       let (bnflst, pos) = _parse_fn_bnflst_sub(tokens, pos)?;
 
@@ -458,23 +462,24 @@ fn _parse_fn_bnflst(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_bnflst_sub(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(Vec<types::Bnf>, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::SEMICOLON, _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::SEMICOLON, _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (_v, pos) = _parse_token_Tok_SEMICOLON(tokens, pos)?;
       let (tail, pos) = _parse_fn_bnflst_sub_sub(tokens, pos)?;
 
@@ -489,24 +494,25 @@ fn _parse_fn_bnflst_sub(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_bnflst_sub_sub(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(Vec<types::Bnf>, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::PUB, _) => Ok(CodeType::Code1),
-    (lexer::TokenKind::VAR(_), _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::PUB, _) => CodeType::Code0,
+    (lexer::TokenKind::VAR(_), _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (bnf, pos) = _parse_fn_bnf(tokens, pos)?;
       let (bnflst, pos) = _parse_fn_bnflst_sub(tokens, pos)?;
 
@@ -523,25 +529,23 @@ fn _parse_fn_bnflst_sub_sub(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
-fn _parse_fn_bnf(
-  tokens: &Vec<lexer::Token>,
-  pos: usize,
-) -> Result<(types::Bnf, usize), ParseError> {
+#[allow(clippy::type_complexity)]
+fn _parse_fn_bnf(tokens: &[lexer::Token], pos: usize) -> Result<(types::Bnf, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
+    Code0,
     Code1,
-    Code2,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::PUB, _) => Ok(CodeType::Code1),
-    (lexer::TokenKind::VAR(_), _) => Ok(CodeType::Code2),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::PUB, _) => CodeType::Code0,
+    (lexer::TokenKind::VAR(_), _) => CodeType::Code1,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (_v1, pos) = _parse_token_Tok_PUB(tokens, pos)?;
       let (fnname, pos) = _parse_token_Tok_VAR(tokens, pos)?;
       let (_v2, pos) = _parse_token_Tok_COLON(tokens, pos)?;
@@ -560,7 +564,7 @@ fn _parse_fn_bnf(
       let rng = types::Range::unite(rng1, rng2);
       types::Bnf::Pub(rng, name, s, bnf_code_lst)
     }
-    CodeType::Code2 => {
+    CodeType::Code1 => {
       let (fnname, pos) = _parse_token_Tok_VAR(tokens, pos)?;
       let (_v2, pos) = _parse_token_Tok_COLON(tokens, pos)?;
       let (typestr, pos) = _parse_token_Tok_STR(tokens, pos)?;
@@ -592,24 +596,25 @@ fn _parse_fn_bnf(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_bnf_code_lst(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(Vec<types::Code>, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::ARROW, _) => Ok(CodeType::Code1),
-    (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::ARROW, _) => CodeType::Code0,
+    (lexer::TokenKind::LBRACES, _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (bnf_code, pos) = _parse_fn_bnf_code(tokens, pos)?;
       let (bnf_code_lst, pos) = _parse_fn_bnf_code_lst_sub(tokens, pos)?;
 
@@ -626,23 +631,24 @@ fn _parse_fn_bnf_code_lst(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_bnf_code_lst_sub(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(Vec<types::Code>, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::COMMA, _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::COMMA, _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (_v, pos) = _parse_token_Tok_COMMA(tokens, pos)?;
       let (tail, pos) = _parse_fn_bnf_code_lst_sub_sub(tokens, pos)?;
 
@@ -657,24 +663,25 @@ fn _parse_fn_bnf_code_lst_sub(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_bnf_code_lst_sub_sub(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(Vec<types::Code>, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::ARROW, _) => Ok(CodeType::Code1),
-    (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::ARROW, _) => CodeType::Code0,
+    (lexer::TokenKind::LBRACES, _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (bnf_code, pos) = _parse_fn_bnf_code(tokens, pos)?;
       let (bnf_code_lst, pos) = _parse_fn_bnf_code_lst_sub(tokens, pos)?;
 
@@ -691,25 +698,26 @@ fn _parse_fn_bnf_code_lst_sub_sub(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_bnf_code(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(types::Code, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
+    Code0,
     Code1,
-    Code2,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::ARROW, _) => Ok(CodeType::Code2),
-    (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::ARROW, _) => CodeType::Code1,
+    (lexer::TokenKind::LBRACES, _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (fn_or_token, pos) = _parse_fn_fn_or_token(tokens, pos)?;
       let (fn_or_tokens, pos) = _parse_fn_fn_or_token_lst(tokens, pos)?;
       let (_v1, pos) = _parse_token_Tok_ARROW(tokens, pos)?;
@@ -725,7 +733,7 @@ fn _parse_fn_bnf_code(
       v.reverse();
       (v, codestr)
     }
-    CodeType::Code2 => {
+    CodeType::Code1 => {
       let (_v1, pos) = _parse_token_Tok_ARROW(tokens, pos)?;
       let (_v2, pos) = _parse_token_Tok_LCURLYBRACES(tokens, pos)?;
       let (code, pos) = _parse_token_Tok_STR(tokens, pos)?;
@@ -750,23 +758,24 @@ fn _parse_fn_bnf_code(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_fn_or_token_lst(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(Vec<(String, types::FnOrToken)>, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::LBRACES, _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (f, pos) = _parse_fn_fn_or_token(tokens, pos)?;
       let (fs, pos) = _parse_fn_fn_or_token_lst_sub(tokens, pos)?;
 
@@ -783,23 +792,24 @@ fn _parse_fn_fn_or_token_lst(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_fn_or_token_lst_sub(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(Vec<(String, types::FnOrToken)>, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::LBRACES, _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (f, pos) = _parse_fn_fn_or_token(tokens, pos)?;
       let (fs, pos) = _parse_fn_fn_or_token_lst(tokens, pos)?;
 
@@ -816,23 +826,24 @@ fn _parse_fn_fn_or_token_lst_sub(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_fn_or_token(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<((String, types::FnOrToken), usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
-    Code1,
+    Code0,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::LBRACES, _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::LBRACES, _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (_v1, pos) = _parse_token_Tok_LBRACES(tokens, pos)?;
       let (name, pos) = _parse_token_Tok_VAR(tokens, pos)?;
       let (_v2, pos) = _parse_token_Tok_COLON(tokens, pos)?;
@@ -855,25 +866,26 @@ fn _parse_fn_fn_or_token(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_fn_or_token_sub(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(types::FnOrToken, usize), ParseError> {
   let mut _token_pos = pos;
   let token1 = tokens.get(pos);
   enum CodeType {
+    Code0,
     Code1,
-    Code2,
     Other,
   }
-  let code_type = token1.ok_or(ParseError::Eof).and_then(|tok| match tok {
-    (lexer::TokenKind::CONSTRUCTOR(_), _) => Ok(CodeType::Code2),
-    (lexer::TokenKind::VAR(_), _) => Ok(CodeType::Code1),
+  let code_type = token1.ok_or(ParseError::Eof).map(|tok| match tok {
+    (lexer::TokenKind::CONSTRUCTOR(_), _) => CodeType::Code1,
+    (lexer::TokenKind::VAR(_), _) => CodeType::Code0,
 
-    _ => Ok(CodeType::Other),
+    _ => CodeType::Other,
   });
   let main = match code_type? {
-    CodeType::Code1 => {
+    CodeType::Code0 => {
       let (fnname, pos) = _parse_token_Tok_VAR(tokens, pos)?;
       let (_v3, pos) = _parse_token_Tok_RBRACES(tokens, pos)?;
 
@@ -882,7 +894,7 @@ fn _parse_fn_fn_or_token_sub(
       let fnnamestr = lexer::get_string(fnnametok).unwrap();
       types::FnOrToken::Function(fnnamestr)
     }
-    CodeType::Code2 => {
+    CodeType::Code1 => {
       let (tokname, pos) = _parse_token_Tok_CONSTRUCTOR(tokens, pos)?;
       let (_v3, pos) = _parse_token_Tok_RBRACES(tokens, pos)?;
 
@@ -903,8 +915,9 @@ fn _parse_fn_fn_or_token_sub(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_Tok_EOF(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(lexer::Token, usize), ParseError> {
   let token1 = tokens.get(pos);
@@ -917,8 +930,9 @@ fn _parse_token_Tok_EOF(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_Tok_GRAMMAR(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(lexer::Token, usize), ParseError> {
   let token1 = tokens.get(pos);
@@ -931,8 +945,9 @@ fn _parse_token_Tok_GRAMMAR(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_Tok_EXTERN(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(lexer::Token, usize), ParseError> {
   let token1 = tokens.get(pos);
@@ -945,8 +960,9 @@ fn _parse_token_Tok_EXTERN(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_Tok_ENUM(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(lexer::Token, usize), ParseError> {
   let token1 = tokens.get(pos);
@@ -959,8 +975,9 @@ fn _parse_token_Tok_ENUM(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_Tok_PUB(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(lexer::Token, usize), ParseError> {
   let token1 = tokens.get(pos);
@@ -973,8 +990,9 @@ fn _parse_token_Tok_PUB(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_Tok_VAR(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(lexer::Token, usize), ParseError> {
   let token1 = tokens.get(pos);
@@ -987,8 +1005,9 @@ fn _parse_token_Tok_VAR(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_Tok_CONSTRUCTOR(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(lexer::Token, usize), ParseError> {
   let token1 = tokens.get(pos);
@@ -1001,8 +1020,9 @@ fn _parse_token_Tok_CONSTRUCTOR(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_Tok_LCURLYBRACES(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(lexer::Token, usize), ParseError> {
   let token1 = tokens.get(pos);
@@ -1015,8 +1035,9 @@ fn _parse_token_Tok_LCURLYBRACES(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_Tok_RCURLYBRACES(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(lexer::Token, usize), ParseError> {
   let token1 = tokens.get(pos);
@@ -1029,8 +1050,9 @@ fn _parse_token_Tok_RCURLYBRACES(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_Tok_EQ(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(lexer::Token, usize), ParseError> {
   let token1 = tokens.get(pos);
@@ -1043,8 +1065,9 @@ fn _parse_token_Tok_EQ(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_Tok_COMMA(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(lexer::Token, usize), ParseError> {
   let token1 = tokens.get(pos);
@@ -1057,8 +1080,9 @@ fn _parse_token_Tok_COMMA(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_Tok_SEMICOLON(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(lexer::Token, usize), ParseError> {
   let token1 = tokens.get(pos);
@@ -1071,8 +1095,9 @@ fn _parse_token_Tok_SEMICOLON(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_Tok_COLON(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(lexer::Token, usize), ParseError> {
   let token1 = tokens.get(pos);
@@ -1085,8 +1110,9 @@ fn _parse_token_Tok_COLON(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_Tok_LBRACES(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(lexer::Token, usize), ParseError> {
   let token1 = tokens.get(pos);
@@ -1099,8 +1125,9 @@ fn _parse_token_Tok_LBRACES(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_Tok_RBRACES(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(lexer::Token, usize), ParseError> {
   let token1 = tokens.get(pos);
@@ -1113,8 +1140,9 @@ fn _parse_token_Tok_RBRACES(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_Tok_ARROW(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(lexer::Token, usize), ParseError> {
   let token1 = tokens.get(pos);
@@ -1127,8 +1155,9 @@ fn _parse_token_Tok_ARROW(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_Tok_STR(
-  tokens: &Vec<lexer::Token>,
+  tokens: &[lexer::Token],
   pos: usize,
 ) -> Result<(lexer::Token, usize), ParseError> {
   let token1 = tokens.get(pos);

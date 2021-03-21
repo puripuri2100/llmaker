@@ -72,7 +72,7 @@ pub fn lex(input: &str) -> Result<Vec<Token>, LexError> {
   // posを更新するマクロ
   macro_rules! lex_a_token {
     ($lexer:expr) => {{
-      let (tok, p) = $lexer?;
+      let (tok, p) = $lexer;
       tokens.push(tok);
       pos = p;
     }};
@@ -121,6 +121,14 @@ fn lex_program(input: &[u8], pos: usize) -> Result<(Vec<Token>, usize), LexError
   // posを更新するマクロ
   macro_rules! lex_a_token {
     ($lexer:expr) => {{
+      let (tok, p) = $lexer;
+      tokens.push(tok);
+      pos = p;
+    }};
+  }
+
+  macro_rules! lex_a_token_result {
+    ($lexer:expr) => {{
       let (tok, p) = $lexer?;
       tokens.push(tok);
       pos = p;
@@ -160,7 +168,7 @@ fn lex_program(input: &[u8], pos: usize) -> Result<(Vec<Token>, usize), LexError
       b';' => {
         lex_a_token!(lex_semicolon(pos));
       }
-      b'"' => lex_a_token!(lex_literal(input, pos)),
+      b'"' => lex_a_token_result!(lex_literal(input, pos)),
 
       // アルファベットと数字と'_'が続く限りvarへ
       b'_' => lex_a_token!(lex_identifier(input, pos)),
@@ -193,7 +201,7 @@ fn lex_program(input: &[u8], pos: usize) -> Result<(Vec<Token>, usize), LexError
       b'A'..=b'Z' => lex_a_token!(lex_constructor(input, pos)),
 
       b' ' | b'\n' | b'\t' => {
-        let ((), p) = skip_spaces(input, pos)?;
+        let ((), p) = skip_spaces(input, pos);
         pos = p;
       }
       b => return Err(error_invalid_char(b as char, types::Range::make(pos, 1))),
@@ -225,9 +233,9 @@ fn recognize_many(input: &[u8], mut pos: usize, mut f: impl FnMut(u8) -> bool) -
 }
 
 // 空白等を無視する
-fn skip_spaces(input: &[u8], pos: usize) -> Result<((), usize), LexError> {
+fn skip_spaces(input: &[u8], pos: usize) -> ((), usize) {
   let pos = recognize_many(input, pos, |b| b" \n\t".contains(&b));
-  Ok(((), pos))
+  ((), pos)
 }
 
 // 改行文字が来るまで読み飛ばす
@@ -240,7 +248,7 @@ fn lex_comment(input: &[u8], mut pos: usize) -> ((), usize) {
 
 //identifier = (small (digit | latin | "_")*)
 //続くところまで取得
-fn lex_identifier(input: &[u8], pos: usize) -> Result<(Token, usize), LexError> {
+fn lex_identifier(input: &[u8], pos: usize) -> (Token, usize) {
   use std::str::from_utf8;
   let start = pos;
   let end_pos = recognize_many(input, pos + 1, |b| {
@@ -249,57 +257,57 @@ fn lex_identifier(input: &[u8], pos: usize) -> Result<(Token, usize), LexError> 
   let v_str = from_utf8(&input[start..end_pos]).unwrap();
   let v_string = v_str.to_string();
   match v_str {
-    "grammar" => Ok((
+    "grammar" => (
       (
         TokenKind::GRAMMAR,
         types::Range::make_start_end(start, end_pos),
       ),
       end_pos,
-    )),
-    "extern" => Ok((
+    ),
+    "extern" => (
       (
         TokenKind::EXTERN,
         types::Range::make_start_end(start, end_pos),
       ),
       end_pos,
-    )),
-    "enum" => Ok((
+    ),
+    "enum" => (
       (
         TokenKind::ENUM,
         types::Range::make_start_end(start, end_pos),
       ),
       end_pos,
-    )),
-    "pub" => Ok((
+    ),
+    "pub" => (
       (TokenKind::PUB, types::Range::make_start_end(start, end_pos)),
       end_pos,
-    )),
-    _ => Ok((
+    ),
+    _ => (
       (
         TokenKind::VAR(v_string),
         types::Range::make_start_end(start, end_pos),
       ),
       end_pos,
-    )),
+    ),
   }
 }
 
 // constructor = (capital (digit | latin | "_")*)
 // constructorが続くところまで取得
-fn lex_constructor(input: &[u8], pos: usize) -> Result<(Token, usize), LexError> {
+fn lex_constructor(input: &[u8], pos: usize) -> (Token, usize) {
   use std::str::from_utf8;
   let start = pos;
   let end_pos = recognize_many(input, pos + 1, |b| {
     SMALL.contains(&b) || CAPITAL.contains(&b) || DIGIT.contains(&b) || b == b'_'
   });
   let v_string = from_utf8(&input[start..end_pos]).unwrap().to_string();
-  Ok((
+  (
     (
       TokenKind::CONSTRUCTOR(v_string),
       types::Range::make_start_end(start, end_pos),
     ),
     end_pos,
-  ))
+  )
 }
 
 // 文字列取得
@@ -316,32 +324,31 @@ fn lex_literal(input: &[u8], pos: usize) -> Result<(Token, usize), LexError> {
       Some(b) => match b {
         b'\\' => match input.get(s_pos + 1) {
           None => {
-            s_pos = s_pos + 1;
+            s_pos += 1;
             v.push(*b)
           }
-          Some(b_next) => match b_next {
-            b'"' => {
-              s_pos = s_pos + 2;
+          Some(b_next) => {
+            if b_next == &b'"' {
+              s_pos += 2;
               v.push(b'"')
-            }
-            _ => {
-              s_pos = s_pos + 1;
+            } else {
+              s_pos += 1;
               v.push(*b)
             }
-          },
+          }
         },
         b'"' => {
           break;
         }
         _ => {
-          s_pos = s_pos + 1;
+          s_pos += 1;
           v.push(*b)
         }
       },
     }
   }
   let end = s_pos;
-  let v_string = String::from_utf8(v).unwrap().to_string();
+  let v_string = String::from_utf8(v).unwrap();
   Ok((
     (
       TokenKind::STR(v_string),
@@ -377,48 +384,48 @@ fn check_lex_literal() {
 //ARROW,
 //STR(String),
 
-fn lex_eof(pos: usize) -> Result<(Token, usize), LexError> {
-  Ok(((TokenKind::EOF, types::Range::make(pos, 1)), pos + 1))
+fn lex_eof(pos: usize) -> (Token, usize) {
+  ((TokenKind::EOF, types::Range::make(pos, 1)), pos + 1)
 }
 
-fn lex_lcurlybraces(pos: usize) -> Result<(Token, usize), LexError> {
-  Ok((
+fn lex_lcurlybraces(pos: usize) -> (Token, usize) {
+  (
     (TokenKind::LCURLYBRACES, types::Range::make(pos, 1)),
     pos + 1,
-  ))
+  )
 }
 
-fn lex_rcurlybraces(pos: usize) -> Result<(Token, usize), LexError> {
-  Ok((
+fn lex_rcurlybraces(pos: usize) -> (Token, usize) {
+  (
     (TokenKind::RCURLYBRACES, types::Range::make(pos, 1)),
     pos + 1,
-  ))
+  )
 }
 
-fn lex_eq(pos: usize) -> Result<(Token, usize), LexError> {
-  Ok(((TokenKind::EQ, types::Range::make(pos, 2)), pos + 2))
+fn lex_eq(pos: usize) -> (Token, usize) {
+  ((TokenKind::EQ, types::Range::make(pos, 2)), pos + 2)
 }
 
-fn lex_comma(pos: usize) -> Result<(Token, usize), LexError> {
-  Ok(((TokenKind::COMMA, types::Range::make(pos, 1)), pos + 1))
+fn lex_comma(pos: usize) -> (Token, usize) {
+  ((TokenKind::COMMA, types::Range::make(pos, 1)), pos + 1)
 }
 
-fn lex_semicolon(pos: usize) -> Result<(Token, usize), LexError> {
-  Ok(((TokenKind::SEMICOLON, types::Range::make(pos, 1)), pos + 1))
+fn lex_semicolon(pos: usize) -> (Token, usize) {
+  ((TokenKind::SEMICOLON, types::Range::make(pos, 1)), pos + 1)
 }
 
-fn lex_colon(pos: usize) -> Result<(Token, usize), LexError> {
-  Ok(((TokenKind::COLON, types::Range::make(pos, 1)), pos + 1))
+fn lex_colon(pos: usize) -> (Token, usize) {
+  ((TokenKind::COLON, types::Range::make(pos, 1)), pos + 1)
 }
 
-fn lex_lbraces(pos: usize) -> Result<(Token, usize), LexError> {
-  Ok(((TokenKind::LBRACES, types::Range::make(pos, 1)), pos + 1))
+fn lex_lbraces(pos: usize) -> (Token, usize) {
+  ((TokenKind::LBRACES, types::Range::make(pos, 1)), pos + 1)
 }
 
-fn lex_rbraces(pos: usize) -> Result<(Token, usize), LexError> {
-  Ok(((TokenKind::RBRACES, types::Range::make(pos, 1)), pos + 1))
+fn lex_rbraces(pos: usize) -> (Token, usize) {
+  ((TokenKind::RBRACES, types::Range::make(pos, 1)), pos + 1)
 }
 
-fn lex_arrow(pos: usize) -> Result<(Token, usize), LexError> {
-  Ok(((TokenKind::ARROW, types::Range::make(pos, 2)), pos + 2))
+fn lex_arrow(pos: usize) -> (Token, usize) {
+  ((TokenKind::ARROW, types::Range::make(pos, 2)), pos + 2)
 }

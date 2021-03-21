@@ -16,7 +16,7 @@ fn print_msg(s: &str) {
   println!("  {}", s);
 }
 
-fn write_file(file_name: String, text: String) -> () {
+fn write_file(file_name: String, text: String) {
   let mut file = File::create(file_name).unwrap();
   file.write_all(text.as_bytes()).unwrap();
 }

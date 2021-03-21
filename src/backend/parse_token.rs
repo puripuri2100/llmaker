@@ -15,8 +15,9 @@ fn token_and_str_to_str(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_token_{}(
-  tokens: &Vec<{}>,
+  tokens: &[{}],
   pos: usize,
 ) -> Result<({}, usize), ParseError>
 {{

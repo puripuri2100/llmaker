@@ -1,3 +1,4 @@
+"use std::cmp::Ordering;"
 "use super::lexer;"
 "use super::types;"
 
@@ -57,7 +58,7 @@ head_tail: "types::Head" = {
 };
 
 gr: "()" = {
-  <_v1: Tok_GRAMMAR> <_v2: Tok_SEMICOLON> => {"()"},
+  <_v1: Tok_GRAMMAR> <_v2: Tok_SEMICOLON> => {""},
 };
 
 

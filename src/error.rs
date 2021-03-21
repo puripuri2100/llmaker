@@ -30,7 +30,7 @@ pub enum Error {
   ConfigError(ConfigError),
 }
 
-pub fn print_error_msg(err: Error, input_file_name_opt: Option<&str>) -> () {
+pub fn print_error_msg(err: Error, input_file_name_opt: Option<&str>) {
   match err {
     Error::OptionError(e) => match e {
       OptionError::NoInputFileName => {

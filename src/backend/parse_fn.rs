@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 pub fn make_parse_fn_fn_str(
   setting: types::Setting,
-  bnfs: &Vec<types::Bnf>,
+  bnfs: &[types::Bnf],
 ) -> Result<String, error::Error> {
   let (main_type_str, token_tbl) = setting;
   let mut token_map = HashMap::new();
@@ -19,24 +19,18 @@ pub fn make_parse_fn_fn_str(
     };
     fn_name_map.insert(name, (range, typestr, code_vec));
   }
-  let main_parse_fn_str = make_main_parse_fn_str(main_type_str.clone(), bnfs.clone())?;
-  let parse_fn_str = make_parse_fn_str(
-    main_type_str.clone(),
-    &fn_name_map,
-    &token_map,
-    bnfs,
-  )?;
+  let main_parse_fn_str = make_main_parse_fn_str(main_type_str.clone(), bnfs)?;
+  let parse_fn_str = make_parse_fn_str(main_type_str, &fn_name_map, &token_map, bnfs)?;
   Ok(format!("{}\n{}\n", main_parse_fn_str, parse_fn_str))
 }
 
 fn make_main_parse_fn_str(
   main_type_str: String,
-  bnfs: Vec<types::Bnf>,
+  bnfs: &[types::Bnf],
 ) -> Result<String, error::Error> {
-  let main_fn_name_opt = bnfs.iter().find(|bnf| match bnf {
-    types::Bnf::Pub(_, _, _, _) => true,
-    _ => false,
-  });
+  let main_fn_name_opt = bnfs
+    .iter()
+    .find(|bnf| matches!(bnf, types::Bnf::Pub(_, _, _, _)));
   let (main_fn_name, target_type) = match main_fn_name_opt {
     Some(types::Bnf::Pub(_, s, ty, _)) => Ok((s, ty)),
     _ => Err(error::Error::ConfigError(
@@ -49,12 +43,10 @@ fn make_main_parse_fn_str(
 #[allow(unused_parens)]
 pub fn parse(tokens: Vec<{}>) -> Result<{}, ParseError> {{
   let (ret, pos) = _parse_fn_{}(&tokens, 0)?;
-  if pos == tokens.len() {{
-    Ok(ret)
-  }} else if pos > tokens.len() {{
-    Err(ParseError::Eof)
-  }} else {{
-    Err(ParseError::RedundantExpression(tokens[pos].clone()))
+  match pos.cmp(&tokens.len()) {{
+    Ordering::Equal => Ok(ret),
+    Ordering::Greater => Err(ParseError::Eof), // pos > tokens.len()
+    Ordering::Less => Err(ParseError::RedundantExpression(tokens[pos].clone()))
   }}
 }}
 ",
@@ -66,17 +58,23 @@ fn make_parse_fn_str(
   main_type_str: String,
   fn_name_map: &HashMap<&String, (&types::Range, &String, &Vec<types::Code>)>,
   token_map: &HashMap<&String, &String>,
-  bnfs: &Vec<types::Bnf>,
+  bnfs: &[types::Bnf],
 ) -> Result<String, error::Error> {
   let mut main_s = String::new();
   for v in bnfs {
     let s = match v {
-      types::Bnf::Pub(_, name, _, _) => {
-        make_parse_fn(main_type_str.clone(), name.to_string(), fn_name_map, token_map)?
-      }
-      types::Bnf::NonPub(_, name, _, _) => {
-        make_parse_fn(main_type_str.clone(), name.to_string(), fn_name_map, token_map)?
-      }
+      types::Bnf::Pub(_, name, _, _) => make_parse_fn(
+        main_type_str.clone(),
+        name.to_string(),
+        fn_name_map,
+        token_map,
+      )?,
+      types::Bnf::NonPub(_, name, _, _) => make_parse_fn(
+        main_type_str.clone(),
+        name.to_string(),
+        fn_name_map,
+        token_map,
+      )?,
     };
     main_s.push_str(&s)
   }
@@ -110,8 +108,9 @@ fn make_parse_fn(
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(unused_parens)]
+#[allow(clippy::type_complexity)]
 fn _parse_fn_{}(
-  tokens: &Vec<{}>,
+  tokens: &[{}],
   pos: usize,
 ) -> Result<({}, usize), ParseError>
 {{
@@ -121,9 +120,9 @@ fn _parse_fn_{}(
   let code_type =
     token1
       .ok_or(ParseError::Eof)
-      .and_then(|tok| match tok {{
+      .map(|tok| match tok {{
     {}
-      _ => {{Ok(CodeType::Other)}}
+      _ => {{CodeType::Other}}
       }});
   let main =
   match code_type? {{
@@ -143,14 +142,14 @@ fn _parse_fn_{}(
   ))
 }
 
-fn make_code_type_str(code_lst: &Vec<types::Code>) -> String {
+fn make_code_type_str(code_lst: &[types::Code]) -> String {
   let mut toknum_str = String::new();
   let mut toknum = 0;
   for (v, _) in code_lst.iter() {
-    if v.len() == 0 {
+    if v.is_empty() {
     } else {
       toknum_str.push_str(&format!("Code{},", toknum));
-      toknum = toknum + 1;
+      toknum += 1;
     }
   }
   format! {
@@ -161,15 +160,14 @@ fn make_code_type_str(code_lst: &Vec<types::Code>) -> String {
 }
 
 fn make_nexttoken_to_code_type(
-  code_lst: &Vec<types::Code>,
+  code_lst: &[types::Code],
   fn_name_map: &HashMap<&String, (&types::Range, &String, &Vec<types::Code>)>,
   token_map: &HashMap<&String, &String>,
 ) -> Result<String, error::Error> {
   let mut tok_vec = Vec::new();
-  for i in 0..code_lst.len() {
-    let (v, _) = &code_lst[i];
+  for (i, (v, _)) in code_lst.iter().enumerate() {
     let next_tokens_lst = make_next_tokens_lst(&v, fn_name_map, i)?;
-    if v.len() == 0 {
+    if v.is_empty() {
     } else {
       tok_vec.push(next_tokens_lst)
     }
@@ -213,7 +211,7 @@ fn make_nexttoken_to_code_type(
             error::ConfigError::NotFoundTokenTypeStr(tokname.clone()),
           )),
         }?;
-        let string = format!("{} => Ok(CodeType::Code{}),\n", s, i_vec[0]);
+        let string = format!("{} => CodeType::Code{},\n", s, i_vec[0]);
         println!("{:?}: {:?}", fn_or_token, tree);
         toknum_str.push_str(&string)
       }
@@ -223,8 +221,9 @@ fn make_nexttoken_to_code_type(
   Ok(toknum_str)
 }
 
+#[allow(clippy::type_complexity)]
 fn make_next_tokens_lst(
-  tokens_lst: &Vec<(String, types::FnOrToken)>,
+  tokens_lst: &[(String, types::FnOrToken)],
   fn_name_map: &HashMap<&String, (&types::Range, &String, &Vec<types::Code>)>,
   i: usize,
 ) -> Result<Vec<(types::FnOrToken, Vec<Vec<usize>>, Vec<usize>)>, error::Error> {
@@ -232,7 +231,7 @@ fn make_next_tokens_lst(
     None => Ok(Vec::new()),
     Some((_, fn_or_token)) => {
       let lst = serch_next_token(
-        &vec![(fn_or_token.clone(), vec![vec![i]])],
+        &[(fn_or_token.clone(), vec![vec![i]])],
         fn_name_map,
         vec![vec![i]],
       )?;
@@ -245,8 +244,9 @@ fn make_next_tokens_lst(
   }
 }
 
+#[allow(clippy::type_complexity)]
 fn serch_next_token(
-  fn_or_token_lst: &Vec<(types::FnOrToken, Vec<Vec<usize>>)>,
+  fn_or_token_lst: &[(types::FnOrToken, Vec<Vec<usize>>)],
   fn_name_map: &HashMap<&String, (&types::Range, &String, &Vec<types::Code>)>,
   i_vec: Vec<Vec<usize>>,
 ) -> Result<Vec<(types::FnOrToken, Vec<Vec<usize>>)>, error::Error> {
@@ -261,7 +261,7 @@ fn serch_next_token(
     .iter()
     .map(|(fn_or_token, tree)| serch(fn_or_token, tree, fn_name_map))
     .collect();
-  let mut old_fn_or_token_lst = fn_or_token_lst.clone();
+  let mut old_fn_or_token_lst = fn_or_token_lst.to_owned();
   let mut new_fn_or_token_lst_lst = Vec::new();
   // Errが無い限り突っ込んでいく
   // Errがあったらそこで終了
@@ -287,14 +287,15 @@ fn serch_next_token(
   }
 }
 
+#[allow(clippy::type_complexity)]
 fn serch(
   fn_or_token: &types::FnOrToken,
-  tree: &Vec<Vec<usize>>,
+  tree: &[Vec<usize>],
   fn_name_map: &HashMap<&String, (&types::Range, &String, &Vec<types::Code>)>,
 ) -> Result<Vec<(types::FnOrToken, Vec<Vec<usize>>)>, error::Error> {
   fn get_head(
-    lst: &Vec<types::Code>,
-    tree: &Vec<Vec<usize>>,
+    lst: &[types::Code],
+    tree: &[Vec<usize>],
   ) -> Vec<(types::FnOrToken, Vec<Vec<usize>>)> {
     let mut main_vec = Vec::new();
     for (new_fn_or_token_lst, _) in lst.iter() {
@@ -326,7 +327,7 @@ fn make_main_code_str(code_lst: &[types::Code]) -> Result<String, (String, Strin
   let mut code_str = String::new();
   let mut toknum = 0;
   for (fn_or_token_lst, code) in code_lst.iter() {
-    if fn_or_token_lst.len() == 0 {
+    if fn_or_token_lst.is_empty() {
       null_code_opt = Some(code.to_string())
     } else {
       let let_code = make_let_code(fn_or_token_lst);
@@ -338,7 +339,7 @@ fn make_main_code_str(code_lst: &[types::Code]) -> Result<String, (String, Strin
         }}",
         toknum, let_code, code
       ));
-      toknum = toknum + 1;
+      toknum += 1;
     }
   }
   match null_code_opt {
