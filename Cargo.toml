@@ -8,7 +8,7 @@ description = "Make LL(1) token parser code for Rust."
 readme = "README.md"
 exclude = ["tests/*", ".github/*"]
 keywords = ["parser", "grammar", "parser-generator"]
-categories = ["Parsing tools"]
+categories = ["parsing"]
 repository = "https://github.com/puripuri2100/llmaker"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
